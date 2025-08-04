@@ -1,4 +1,3 @@
-
 package com.example.controlfinancierocompose.ui.investments
 
 import androidx.compose.foundation.BorderStroke
@@ -27,6 +26,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -56,7 +56,12 @@ import com.example.controlfinancierocompose.navigation.Screen
 import java.text.NumberFormat
 import java.util.Locale
 
-data class InvestmentPlatform(val id: Long, val name: String, val isActive: Boolean = true, val investments: List<Investment> = emptyList())
+data class InvestmentPlatform(
+    val id: Long,
+    val name: String,
+    val isActive: Boolean = true,
+    val investments: List<Investment> = emptyList()
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +69,27 @@ fun InvestmentsScreen(
     viewModel: InvestmentsViewModel,
     onNavigate: (Int) -> Unit
 ) {
+    // Estados para confirmación de borrado
+    val showDeletePlatformDialog = remember { mutableStateOf(false) }
+    val platformToDelete = remember { mutableStateOf<Long?>(null) }
+    val showDeleteInvestmentDialog = remember { mutableStateOf(false) }
+    val investmentToDelete = remember { mutableStateOf<Pair<Long, String>?>(null) }
+
+    // Estados para edición de plataformas
+    val showEditPlatformDialog = remember { mutableStateOf(false) }
+    val platformToEdit = remember { mutableStateOf<Long?>(null) }
+    val editPlatformName = remember { mutableStateOf("") }
+    val editPlatformActive = remember { mutableStateOf(true) }
+
+    // Estados para edición de inversiones
+    val showEditInvestmentDialog = remember { mutableStateOf(false) }
+    val investmentToEdit = remember { mutableStateOf<Pair<Long, String>?>(null) }
+    val editInvestmentName = remember { mutableStateOf("") }
+    val editInvestmentAmount = remember { mutableStateOf("") }
+    val editInvestmentType = remember { mutableStateOf<InvestmentType?>(null) }
+    val editInvestmentDate = remember { mutableStateOf("") }
+    val editInvestmentActive = remember { mutableStateOf(true) }
+
     // Obtenemos la lista de plataformas del ViewModel
     val platforms by viewModel.platforms.collectAsState(initial = emptyList())
     val totalInvested = platforms.flatMap { it.investments }.sumOf { it.amount }
@@ -71,6 +97,21 @@ fun InvestmentsScreen(
     val investmentCount = platforms.sumOf { it.investments.size }
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("es", "ES"))
     var amountsVisible = remember { mutableStateOf(true) }
+    // Estados para el diálogo de añadir plataforma
+    val showAddDialog = remember { mutableStateOf(false) }
+    val newPlatformName = remember { mutableStateOf("") }
+
+    // Estado resumen de inversiones
+    val investmentState = remember(platforms) {
+        val totalAmount = platforms.flatMap { it.investments }.filter { it.isActive }.sumOf { it.amount }
+        val activePlatforms = platforms.count { it.isActive }
+        val activeInvestments = platforms.flatMap { it.investments }.count { it.isActive }
+        object {
+            val totalAmount = totalAmount
+            val activePlatforms = activePlatforms
+            val activeInvestments = activeInvestments
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -82,7 +123,7 @@ fun InvestmentsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "Inversiones", 
+                    "Inversiones",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold
                     ),
@@ -92,7 +133,7 @@ fun InvestmentsScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO: Acción agregar plataforma */ },
+                onClick = { showAddDialog.value = true },
                 containerColor = Color(0xFF1976D2),
                 contentColor = Color.White
             ) {
@@ -110,6 +151,8 @@ fun InvestmentsScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
+                // Tarjeta de resumen de inversiones
+                // ...eliminado el card de resumen superior...
                 item {
                     Card(
                         modifier = Modifier
@@ -128,26 +171,70 @@ fun InvestmentsScreen(
                                 .padding(vertical = 12.dp, horizontal = 12.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                Text("Invertido", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)))
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    "Invertido",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF1976D2)
+                                    )
+                                )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 if (amountsVisible.value) {
                                     val formatted = currencyFormatter.format(totalInvested)
                                     val clean = formatted.replace("€", "").trim()
                                     Row(verticalAlignment = androidx.compose.ui.Alignment.Bottom) {
-                                        Text(text = clean, style = MaterialTheme.typography.titleMedium.copy(color = Color(0xFF388E3C), fontWeight = FontWeight.Bold))
-                                        Text(text = " €", style = MaterialTheme.typography.bodyLarge.copy(color = Color(0xFF388E3C), fontWeight = FontWeight.Bold), modifier = Modifier.padding(start = 2.dp, bottom = 2.dp))
+                                        Text(
+                                            text = clean,
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                color = Color(0xFF388E3C),
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        )
+                                        Text(
+                                            text = " €",
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                color = Color(0xFF388E3C),
+                                                fontWeight = FontWeight.Bold
+                                            ),
+                                            modifier = Modifier.padding(start = 2.dp, bottom = 2.dp)
+                                        )
                                     }
                                 } else {
-                                    Text(text = "******", style = MaterialTheme.typography.titleMedium.copy(color = Color(0xFF388E3C), fontWeight = FontWeight.Bold))
+                                    Text(
+                                        text = "******",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            color = Color(0xFF388E3C), fontWeight = FontWeight.Bold
+                                        )
+                                    )
                                 }
                             }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                Text("Plataformas", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)))
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    "Plataformas",
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF1976D2)
+                                    )
+                                )
                                 Spacer(modifier = Modifier.height(2.dp))
-                                Text(platformCount.toString(), style = MaterialTheme.typography.titleMedium.copy(color = Color(0xFF1976D2), fontWeight = FontWeight.Bold))
+                                Text(
+                                    platformCount.toString(),
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = Color(0xFF1976D2), fontWeight = FontWeight.Bold
+                                    )
+                                )
                             }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 IconButton(
                                     onClick = { amountsVisible.value = !amountsVisible.value },
                                     modifier = Modifier.size(32.dp)
@@ -159,38 +246,84 @@ fun InvestmentsScreen(
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
-                                Text(if (amountsVisible.value) "Ocultar" else "Mostrar", style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF1976D2)))
+                                Text(
+                                    if (amountsVisible.value) "Ocultar" else "Mostrar",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color(0xFF1976D2)
+                                    )
+                                )
                             }
                         }
                     }
                 }
                 items(platforms.sortedBy { it.isActive.not() }) { platform ->
                     PlatformCard(
-                        platform = platform, 
-                        amountsVisible = amountsVisible.value, 
+                        platform = platform,
+                        amountsVisible = amountsVisible.value,
                         currencyFormatter = currencyFormatter,
                         onTogglePlatformActive = { viewModel.togglePlatformActiveState(platform.id) },
-                        onDeletePlatform = { viewModel.deletePlatform(platform.id) },
-                        onToggleInvestmentActive = { investmentId -> viewModel.toggleInvestmentActiveState(platform.id, investmentId) },
-                        onEditInvestment = { /* TODO: Implementar edición */ },
-                        onDeleteInvestment = { investmentId -> viewModel.deleteInvestment(platform.id, investmentId) }
+                        onEditPlatform = {
+                            platformToEdit.value = platform.id
+                            editPlatformName.value = platform.name
+                            editPlatformActive.value = platform.isActive
+                            showEditPlatformDialog.value = true
+                        },
+                        onDeletePlatform = {
+                            platformToDelete.value = platform.id
+                            showDeletePlatformDialog.value = true
+                        },
+                        onToggleInvestmentActive = { investmentId ->
+                            viewModel.toggleInvestmentActiveState(
+                                platform.id,
+                                investmentId
+                            )
+                        },
+                        onEditInvestment = { investmentId ->
+                            val investment = platform.investments.find { it.id == investmentId }
+                            if (investment != null) {
+                                investmentToEdit.value = platform.id to investmentId
+                                editInvestmentName.value = investment.name
+                                editInvestmentAmount.value = investment.amount.toString()
+                                editInvestmentType.value = investment.type
+                                editInvestmentDate.value = investment.date
+                                editInvestmentActive.value = investment.isActive
+                                showEditInvestmentDialog.value = true
+                            }
+                        },
+                        onDeleteInvestment = { investmentId ->
+                            investmentToDelete.value = platform.id to investmentId
+                            showDeleteInvestmentDialog.value = true
+                        },
+                        onAddInvestment = { platformId ->
+                            // Inicializar para una nueva inversión
+                            investmentToEdit.value = platformId to ""
+                            editInvestmentName.value = ""
+                            editInvestmentAmount.value = ""
+                            editInvestmentType.value = InvestmentType.STOCKS
+                            editInvestmentDate.value = ""
+                            editInvestmentActive.value = true
+                            showEditInvestmentDialog.value = true
+                        }
                     )
                 }
             }
         }
     }
+
 }
 
 @Composable
 fun PlatformCard(
-    platform: InvestmentPlatform, 
-    amountsVisible: Boolean, 
+    platform: InvestmentPlatform,
+    amountsVisible: Boolean,
     currencyFormatter: NumberFormat,
     onTogglePlatformActive: () -> Unit,
+    onEditPlatform: () -> Unit,
     onDeletePlatform: () -> Unit,
     onToggleInvestmentActive: (String) -> Unit,
     onEditInvestment: (String) -> Unit,
-    onDeleteInvestment: (String) -> Unit
+    onDeleteInvestment: (String) -> Unit,
+    onAddInvestment: (Long) -> Unit
 ) {
     val expanded = remember { mutableStateOf(false) }
     Card(
@@ -237,17 +370,42 @@ fun PlatformCard(
                         modifier = Modifier.size(22.dp)
                     )
                 }
+                // Editar plataforma
+                IconButton(
+                    onClick = { onEditPlatform() },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Editar plataforma",
+                        tint = Color(0xFF1976D2),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
                 // Eliminar plataforma
                 IconButton(
                     onClick = { onDeletePlatform() },
                     modifier = Modifier.size(32.dp)
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Eliminar plataforma", tint = Color(0xFFD32F2F), modifier = Modifier.size(22.dp))
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Eliminar plataforma",
+                        tint = Color(0xFFD32F2F),
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
-            Text(text = "${platform.investments.size} inversiones", style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF757575)), modifier = Modifier.padding(top = 2.dp, bottom = 2.dp))
+            Text(
+                text = "${platform.investments.size} inversiones",
+                style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF757575)),
+                modifier = Modifier.padding(top = 2.dp, bottom = 2.dp)
+            )
             val platformTotal = platform.investments.sumOf { it.amount }
-            Text(text = "Total: ${if (amountsVisible) currencyFormatter.format(platformTotal) else "******"}", style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF388E3C), fontWeight = FontWeight.Bold), modifier = Modifier.padding(bottom = 6.dp))
+            Text(
+                text = "Total: ${if (amountsVisible) currencyFormatter.format(platformTotal) else "******"}",
+                style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF388E3C), fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
             if (expanded.value) {
                 Spacer(modifier = Modifier.height(10.dp))
                 val sortedInvestments = platform.investments.sortedBy { it.isActive.not() }
@@ -306,16 +464,18 @@ fun PlatformCard(
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                // Botón para agregar inversión (opcional)
-                /*Button(
-                    onClick = { /* TODO: Acción agregar inversión */ },
+                Button(
+                    onClick = { onAddInvestment(platform.id) },
                     modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2), contentColor = Color.White),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2), contentColor = Color.White),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text("Agregar inversión", style = MaterialTheme.typography.labelLarge)
-                }*/
+                }
             }
         }
     }
 }
+
+
+
