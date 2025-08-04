@@ -32,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,44 +64,8 @@ fun InvestmentsScreen(
     viewModel: InvestmentsViewModel,
     onNavigate: (Int) -> Unit
 ) {
-    // Datos de ejemplo
-    val platforms = listOf(
-        InvestmentPlatform(
-            id = 1,
-            name = "MyPlatform",
-            isActive = true,
-            investments = listOf(
-                Investment(
-                    id = "1", 
-                    name = "Crypto", 
-                    amount = 1000.0, 
-                    type = InvestmentType.CRYPTO, 
-                    date = "2023-01-01"
-                ),
-                Investment(
-                    id = "2", 
-                    name = "Stocks", 
-                    amount = 500.0, 
-                    type = InvestmentType.STOCKS, 
-                    date = "2023-02-15"
-                )
-            )
-        ),
-        InvestmentPlatform(
-            id = 2,
-            name = "OtherPlatform",
-            isActive = false,
-            investments = listOf(
-                Investment(
-                    id = "3", 
-                    name = "ETF", 
-                    amount = 200.0, 
-                    type = InvestmentType.MUTUAL_FUNDS, 
-                    date = "2023-03-20"
-                )
-            )
-        )
-    )
+    // Obtenemos la lista de plataformas del ViewModel
+    val platforms by viewModel.platforms.collectAsState(initial = emptyList())
     val totalInvested = platforms.flatMap { it.investments }.sumOf { it.amount }
     val platformCount = platforms.size
     val investmentCount = platforms.sumOf { it.investments.size }
@@ -164,7 +129,7 @@ fun InvestmentsScreen(
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                Text("Total invertido", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)))
+                                Text("Invertido", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)))
                                 Spacer(modifier = Modifier.height(2.dp))
                                 if (amountsVisible.value) {
                                     val formatted = currencyFormatter.format(totalInvested)
@@ -200,7 +165,16 @@ fun InvestmentsScreen(
                     }
                 }
                 items(platforms.sortedBy { it.isActive.not() }) { platform ->
-                    PlatformCard(platform = platform, amountsVisible = amountsVisible.value, currencyFormatter = currencyFormatter)
+                    PlatformCard(
+                        platform = platform, 
+                        amountsVisible = amountsVisible.value, 
+                        currencyFormatter = currencyFormatter,
+                        onTogglePlatformActive = { viewModel.togglePlatformActiveState(platform.id) },
+                        onDeletePlatform = { viewModel.deletePlatform(platform.id) },
+                        onToggleInvestmentActive = { investmentId -> viewModel.toggleInvestmentActiveState(platform.id, investmentId) },
+                        onEditInvestment = { /* TODO: Implementar edición */ },
+                        onDeleteInvestment = { investmentId -> viewModel.deleteInvestment(platform.id, investmentId) }
+                    )
                 }
             }
         }
@@ -208,7 +182,16 @@ fun InvestmentsScreen(
 }
 
 @Composable
-fun PlatformCard(platform: InvestmentPlatform, amountsVisible: Boolean, currencyFormatter: NumberFormat) {
+fun PlatformCard(
+    platform: InvestmentPlatform, 
+    amountsVisible: Boolean, 
+    currencyFormatter: NumberFormat,
+    onTogglePlatformActive: () -> Unit,
+    onDeletePlatform: () -> Unit,
+    onToggleInvestmentActive: (String) -> Unit,
+    onEditInvestment: (String) -> Unit,
+    onDeleteInvestment: (String) -> Unit
+) {
     val expanded = remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
@@ -232,7 +215,7 @@ fun PlatformCard(platform: InvestmentPlatform, amountsVisible: Boolean, currency
                 )
                 // Tick/Cross activo/inactivo
                 IconButton(
-                    onClick = { /* TODO: Cambiar estado activo/inactivo de la plataforma */ },
+                    onClick = { onTogglePlatformActive() },
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
@@ -256,7 +239,7 @@ fun PlatformCard(platform: InvestmentPlatform, amountsVisible: Boolean, currency
                 }
                 // Eliminar plataforma
                 IconButton(
-                    onClick = { /* TODO: Eliminar plataforma */ },
+                    onClick = { onDeletePlatform() },
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(Icons.Default.Delete, contentDescription = "Eliminar plataforma", tint = Color(0xFFD32F2F), modifier = Modifier.size(22.dp))
@@ -267,17 +250,17 @@ fun PlatformCard(platform: InvestmentPlatform, amountsVisible: Boolean, currency
             Text(text = "Total: ${if (amountsVisible) currencyFormatter.format(platformTotal) else "******"}", style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF388E3C), fontWeight = FontWeight.Bold), modifier = Modifier.padding(bottom = 6.dp))
             if (expanded.value) {
                 Spacer(modifier = Modifier.height(10.dp))
-                val sortedInvestments = platform.investments
+                val sortedInvestments = platform.investments.sortedBy { it.isActive.not() }
                 sortedInvestments.forEachIndexed { idx, investment ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = if (idx == platform.investments.lastIndex) 0.dp else 8.dp)
+                            .padding(bottom = if (idx == sortedInvestments.lastIndex) 0.dp else 8.dp)
                             .shadow(1.dp, RoundedCornerShape(16.dp)),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
                         elevation = CardDefaults.cardElevation(1.dp),
                         shape = RoundedCornerShape(16.dp),
-                        border = if (platform.isActive) BorderStroke(2.dp, Color(0xFF1976D2)) else BorderStroke(2.dp, Color(0xFFD32F2F))
+                        border = if (!investment.isActive) BorderStroke(2.dp, Color(0xFFD32F2F)) else if (!platform.isActive) BorderStroke(2.dp, Color(0xFFD32F2F)) else BorderStroke(2.dp, Color(0xFF1976D2))
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(
@@ -289,28 +272,28 @@ fun PlatformCard(platform: InvestmentPlatform, amountsVisible: Boolean, currency
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     modifier = Modifier.weight(1f)
                                 )
-                                // Tick/Cross activo/inactivo (simulado, depende del modelo)
+                                // Tick/Cross activo/inactivo
                                 IconButton(
-                                    onClick = { /* TODO: Cambiar estado activo/inactivo de la inversión */ },
+                                    onClick = { onToggleInvestmentActive(investment.id) },
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Check, // TODO: Cambiar según estado
-                                        contentDescription = "Activo", // TODO: Cambiar según estado
-                                        tint = Color(0xFF388E3C), // TODO: Cambiar según estado
+                                        imageVector = if (investment.isActive) Icons.Default.Check else Icons.Default.Close,
+                                        contentDescription = if (investment.isActive) "Activo" else "Inactivo",
+                                        tint = if (investment.isActive) Color(0xFF388E3C) else Color(0xFFD32F2F),
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
                                 // Editar inversión
                                 IconButton(
-                                    onClick = { /* TODO: Editar inversión */ },
+                                    onClick = { onEditInvestment(investment.id) },
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(Icons.Default.Edit, contentDescription = "Editar inversión", tint = Color(0xFF1976D2), modifier = Modifier.size(18.dp))
                                 }
                                 // Eliminar inversión
                                 IconButton(
-                                    onClick = { /* TODO: Eliminar inversión */ },
+                                    onClick = { onDeleteInvestment(investment.id) },
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(Icons.Default.Delete, contentDescription = "Eliminar inversión", tint = Color(0xFFD32F2F), modifier = Modifier.size(18.dp))

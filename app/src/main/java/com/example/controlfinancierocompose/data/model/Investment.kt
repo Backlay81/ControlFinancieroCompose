@@ -5,7 +5,8 @@ data class Investment(
     val name: String,
     val amount: Double,
     val type: InvestmentType,
-    val date: String
+    val date: String,
+    val isActive: Boolean = true
 )
 
 enum class InvestmentType(val displayName: String) {
