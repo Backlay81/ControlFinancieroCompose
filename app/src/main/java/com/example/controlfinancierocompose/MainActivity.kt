@@ -30,10 +30,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,7 +43,7 @@ import com.example.controlfinancierocompose.navigation.Screen
 import com.example.controlfinancierocompose.ui.accounts.AccountsScreen
 import com.example.controlfinancierocompose.ui.accounts.AccountsViewModel
 import com.example.controlfinancierocompose.ui.investments.InvestmentsScreen
-import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModel
+import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModelRoom
 import com.example.controlfinancierocompose.ui.theme.ControlFinancieroComposeTheme
 
 class MainActivity : ComponentActivity() {
@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
         AccountsViewModel.Factory(app.repository)
     }
     
-    private val investmentsViewModel: InvestmentsViewModel by viewModels()
+    private val investmentsViewModel: InvestmentsViewModelRoom by viewModels()
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     accountsViewModel: AccountsViewModel,
-    investmentsViewModel: InvestmentsViewModel
+    investmentsViewModel: InvestmentsViewModelRoom
 ) {
     var currentScreen by remember { mutableStateOf(Screen.ACCOUNTS) } // Por defecto mostramos la pantalla de cuentas
     var selectedSection by remember { mutableStateOf(currentScreen.index) }

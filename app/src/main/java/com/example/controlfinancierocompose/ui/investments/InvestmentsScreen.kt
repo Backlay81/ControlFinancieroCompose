@@ -1,6 +1,7 @@
 package com.example.controlfinancierocompose.ui.investments
 
 import com.example.controlfinancierocompose.ui.investments.EditPlatformDialog
+import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModelRoom
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,23 +55,19 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.TextField
-import com.example.controlfinancierocompose.data.model.Investment
+import com.example.controlfinancierocompose.data.InvestmentEntity
+import com.example.controlfinancierocompose.data.InvestmentPlatformEntity
 import com.example.controlfinancierocompose.data.model.InvestmentType
 import com.example.controlfinancierocompose.navigation.Screen
 import java.text.NumberFormat
 import java.util.Locale
 
-data class InvestmentPlatform(
-    val id: Long,
-    val name: String,
-    val isActive: Boolean = true,
-    val investments: List<Investment> = emptyList()
-)
+// Eliminada clase InvestmentPlatform, ahora se usa InvestmentPlatformEntity y InvestmentEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvestmentsScreen(
-    viewModel: InvestmentsViewModel,
+    viewModel: InvestmentsViewModelRoom,
     onNavigate: (Int) -> Unit
 ) {
     // Estados para confirmación de borrado
@@ -96,9 +93,10 @@ fun InvestmentsScreen(
 
     // Obtenemos la lista de plataformas del ViewModel
     val platforms by viewModel.platforms.collectAsState(initial = emptyList())
-    val totalInvested = platforms.flatMap { it.investments }.sumOf { it.amount }
+    val investments by viewModel.investments.collectAsState(initial = emptyList())
+    val totalInvested = investments.filter { it.isActive }.sumOf { it.amount }
     val platformCount = platforms.size
-    val investmentCount = platforms.sumOf { it.investments.size }
+    val investmentCount = investments.size
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("es", "ES"))
     var amountsVisible = remember { mutableStateOf(true) }
     // Estados para el diálogo de añadir plataforma
@@ -106,10 +104,10 @@ fun InvestmentsScreen(
     val newPlatformName = remember { mutableStateOf("") }
 
     // Estado resumen de inversiones
-    val investmentState = remember(platforms) {
-        val totalAmount = platforms.flatMap { it.investments }.filter { it.isActive }.sumOf { it.amount }
+    val investmentState = remember(platforms to investments) {
+        val totalAmount = investments.filter { it.isActive }.sumOf { it.amount }
         val activePlatforms = platforms.count { it.isActive }
-        val activeInvestments = platforms.flatMap { it.investments }.count { it.isActive }
+        val activeInvestments = investments.count { it.isActive }
         object {
             val totalAmount = totalAmount
             val activePlatforms = activePlatforms
@@ -145,6 +143,37 @@ fun InvestmentsScreen(
             }
         }
     ) { padding ->
+        if (showAddDialog.value) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showAddDialog.value = false },
+                title = { Text("Nueva plataforma de inversión") },
+                text = {
+                    Column {
+                        TextField(
+                            value = newPlatformName.value,
+                            onValueChange = { newPlatformName.value = it },
+                            label = { Text("Nombre de la plataforma") }
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        if (newPlatformName.value.isNotBlank()) {
+                            viewModel.addPlatform(newPlatformName.value)
+                            newPlatformName.value = ""
+                            showAddDialog.value = false
+                        }
+                    }) {
+                        Text("Agregar")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = { showAddDialog.value = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
         Box(
             modifier = Modifier
                 .background(Color.White)
@@ -241,12 +270,14 @@ fun InvestmentsScreen(
                 ) {
                     val sortedPlatforms = platforms.sortedBy { it.isActive.not() }
                     items(sortedPlatforms) { platform ->
-                        PlatformCard(
+                        val platformInvestments = investments.filter { it.platformId == platform.id }
+                        PlatformCardRoom(
                             platform = platform,
+                            investments = platformInvestments,
                             amountsVisible = amountsVisible.value,
                             currencyFormatter = currencyFormatter,
                             onTogglePlatformActive = {
-                                viewModel.togglePlatformActiveState(platform.id)
+                                viewModel.updatePlatform(platform.copy(isActive = !platform.isActive))
                             },
                             onEditPlatform = {
                                 platformToEdit.value = platform.id
@@ -259,10 +290,13 @@ fun InvestmentsScreen(
                                 showDeletePlatformDialog.value = true
                             },
                             onToggleInvestmentActive = { investmentId: Long ->
-                                viewModel.toggleInvestmentActiveState(platform.id, investmentId)
+                                val investment = platformInvestments.find { it.id == investmentId }
+                                if (investment != null) {
+                                    viewModel.updateInvestment(investment.copy(isActive = !investment.isActive))
+                                }
                             },
                             onEditInvestment = { investmentId: Long ->
-                                val investment = platform.investments.find { it.id == investmentId }
+                                val investment = platformInvestments.find { it.id == investmentId }
                                 if (investment != null) {
                                     investmentToEdit.value = Pair(platform.id, investment.id)
                                     editInvestmentName.value = investment.name
@@ -274,7 +308,7 @@ fun InvestmentsScreen(
                                 }
                             },
                             onDeleteInvestment = { investmentId: Long ->
-                                val investment = platform.investments.find { it.id == investmentId }
+                                val investment = platformInvestments.find { it.id == investmentId }
                                 if (investment != null) {
                                     investmentToDelete.value = Pair(platform.id, investment.id)
                                     showDeleteInvestmentDialog.value = true
@@ -289,111 +323,123 @@ fun InvestmentsScreen(
             }
             // Diálogo de edición de plataforma
             if (showEditPlatformDialog.value) {
-                EditPlatformDialog(
-                    platformName = editPlatformName.value,
-                    isActive = editPlatformActive.value,
-                    onConfirm = { name, active ->
-                        platformToEdit.value?.let { id ->
-                            viewModel.editPlatform(id, name, active)
-                        }
-                        showEditPlatformDialog.value = false
-                    },
-                    onDismiss = { showEditPlatformDialog.value = false },
-                    onNameChange = { editPlatformName.value = it },
-                    onActiveChange = { editPlatformActive.value = it }
-                )
+                platformToEdit.value?.let { id ->
+                    val platform = platforms.find { it.id == id }
+                    if (platform != null) {
+                        EditPlatformDialog(
+                            platformName = editPlatformName.value,
+                            isActive = editPlatformActive.value,
+                            onConfirm = { name, active ->
+                                viewModel.updatePlatform(platform.copy(name = name, isActive = active))
+                                showEditPlatformDialog.value = false
+                            },
+                            onDismiss = { showEditPlatformDialog.value = false },
+                            onNameChange = { editPlatformName.value = it },
+                            onActiveChange = { editPlatformActive.value = it }
+                        )
+                    }
+                }
             }
 
             // Diálogo de confirmación de borrado de plataforma
             if (showDeletePlatformDialog.value && platformToDelete.value != null) {
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = { showDeletePlatformDialog.value = false },
-                    title = { Text("Eliminar plataforma") },
-                    text = { Text("¿Seguro que quieres eliminar esta plataforma? Se eliminarán todas sus inversiones.") },
-                    confirmButton = {
-                        Button(onClick = {
-                            platformToDelete.value?.let { id ->
-                                viewModel.deletePlatform(id)
+                val platform = platforms.find { it.id == platformToDelete.value }
+                if (platform != null) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showDeletePlatformDialog.value = false },
+                        title = { Text("Eliminar plataforma") },
+                        text = { Text("¿Seguro que quieres eliminar esta plataforma? Se eliminarán todas sus inversiones.") },
+                        confirmButton = {
+                            Button(onClick = {
+                                viewModel.deletePlatform(platform)
+                                showDeletePlatformDialog.value = false
+                            }) {
+                                Text("Eliminar")
                             }
-                            showDeletePlatformDialog.value = false
-                        }) {
-                            Text("Eliminar")
+                        },
+                        dismissButton = {
+                            Button(onClick = { showDeletePlatformDialog.value = false }) {
+                                Text("Cancelar")
+                            }
                         }
-                    },
-                    dismissButton = {
-                        Button(onClick = { showDeletePlatformDialog.value = false }) {
-                            Text("Cancelar")
-                        }
-                    }
-                )
+                    )
+                }
             }
             // Diálogo de edición de inversión
             if (showEditInvestmentDialog.value && investmentToEdit.value != null) {
                 val (platformId, investmentId) = investmentToEdit.value!!
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = { showEditInvestmentDialog.value = false },
-                    title = { Text("Editar inversión") },
-                    text = {
-                        Column {
-                            TextField(value = editInvestmentName.value, onValueChange = { editInvestmentName.value = it }, label = { Text("Nombre") })
-                            TextField(value = editInvestmentAmount.value, onValueChange = { editInvestmentAmount.value = it }, label = { Text("Cantidad") })
-                            TextField(value = editInvestmentDate.value, onValueChange = { editInvestmentDate.value = it }, label = { Text("Fecha") })
-                            // Puedes agregar más campos aquí si lo necesitas
+                val investment = investments.find { it.id == investmentId && it.platformId == platformId }
+                if (investment != null) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showEditInvestmentDialog.value = false },
+                        title = { Text("Editar inversión") },
+                        text = {
+                            Column {
+                                TextField(value = editInvestmentName.value, onValueChange = { editInvestmentName.value = it }, label = { Text("Nombre") })
+                                TextField(value = editInvestmentAmount.value, onValueChange = { editInvestmentAmount.value = it }, label = { Text("Cantidad") })
+                                TextField(value = editInvestmentDate.value, onValueChange = { editInvestmentDate.value = it }, label = { Text("Fecha") })
+                                // Puedes agregar más campos aquí si lo necesitas
+                            }
+                        },
+                        confirmButton = {
+                            Button(onClick = {
+                                viewModel.updateInvestment(
+                                    investment.copy(
+                                        name = editInvestmentName.value,
+                                        amount = editInvestmentAmount.value.toDoubleOrNull() ?: 0.0,
+                                        type = editInvestmentType.value ?: InvestmentType.OTHER,
+                                        date = editInvestmentDate.value,
+                                        isActive = editInvestmentActive.value
+                                    )
+                                )
+                                showEditInvestmentDialog.value = false
+                            }) {
+                                Text("Guardar")
+                            }
+                        },
+                        dismissButton = {
+                            Button(onClick = { showEditInvestmentDialog.value = false }) {
+                                Text("Cancelar")
+                            }
                         }
-                    },
-                    confirmButton = {
-                        Button(onClick = {
-                            viewModel.updateInvestment(
-                                platformId,
-                                investmentId,
-                                editInvestmentName.value,
-                                editInvestmentAmount.value.toDoubleOrNull() ?: 0.0,
-                                editInvestmentType.value ?: InvestmentType.OTHER,
-                                editInvestmentDate.value,
-                                editInvestmentActive.value
-                            )
-                            showEditInvestmentDialog.value = false
-                        }) {
-                            Text("Guardar")
-                        }
-                    },
-                    dismissButton = {
-                        Button(onClick = { showEditInvestmentDialog.value = false }) {
-                            Text("Cancelar")
-                        }
-                    }
-                )
+                    )
+                }
             }
             // Diálogo de confirmación de borrado de inversión
             if (showDeleteInvestmentDialog.value && investmentToDelete.value != null) {
                 val (platformId, investmentId) = investmentToDelete.value!!
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = { showDeleteInvestmentDialog.value = false },
-                    title = { Text("Eliminar inversión") },
-                    text = { Text("¿Seguro que quieres eliminar esta inversión?") },
-                    confirmButton = {
-                        Button(onClick = {
-                            viewModel.deleteInvestment(platformId, investmentId)
-                            showDeleteInvestmentDialog.value = false
-                        }) {
-                            Text("Eliminar")
+                val investment = investments.find { it.id == investmentId && it.platformId == platformId }
+                if (investment != null) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showDeleteInvestmentDialog.value = false },
+                        title = { Text("Eliminar inversión") },
+                        text = { Text("¿Seguro que quieres eliminar esta inversión?") },
+                        confirmButton = {
+                            Button(onClick = {
+                                viewModel.deleteInvestment(investment)
+                                showDeleteInvestmentDialog.value = false
+                            }) {
+                                Text("Eliminar")
+                            }
+                        },
+                        dismissButton = {
+                            Button(onClick = { showDeleteInvestmentDialog.value = false }) {
+                                Text("Cancelar")
+                            }
                         }
-                    },
-                    dismissButton = {
-                        Button(onClick = { showDeleteInvestmentDialog.value = false }) {
-                            Text("Cancelar")
-                        }
-                    }
-                )
+                    )
+                }
             }
         }
     }
 
 }
 
+
 @Composable
-fun PlatformCard(
-    platform: InvestmentPlatform,
+fun PlatformCardRoom(
+    platform: InvestmentPlatformEntity,
+    investments: List<InvestmentEntity>,
     amountsVisible: Boolean,
     currencyFormatter: NumberFormat,
     onTogglePlatformActive: () -> Unit,
@@ -416,7 +462,6 @@ fun PlatformCard(
         border = if (!platform.isActive) BorderStroke(3.dp, Color(0xFFD32F2F)) else BorderStroke(1.dp, Color.Black)
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
-            // Menú de opciones agrupadas (overflow menu)
             val showMenu = remember { mutableStateOf(false) }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -427,7 +472,6 @@ fun PlatformCard(
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)),
                     modifier = Modifier.weight(1f)
                 )
-                // Expandir/colapsar
                 IconButton(
                     onClick = { expanded.value = !expanded.value },
                     modifier = Modifier.size(32.dp)
@@ -439,7 +483,6 @@ fun PlatformCard(
                         modifier = Modifier.size(22.dp)
                     )
                 }
-                // Menú de tres puntos
                 IconButton(
                     onClick = { showMenu.value = true },
                     modifier = Modifier.size(32.dp)
@@ -479,25 +522,24 @@ fun PlatformCard(
                             Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF1976D2))
                         }
                     )
-                androidx.compose.material3.DropdownMenuItem(
-                    text = { Text("Eliminar plataforma") },
-                    onClick = {
-                        showMenu.value = false
-                        // Abrir diálogo de confirmación de borrado
-                        onDeletePlatform()
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD32F2F))
-                    }
-                )
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text("Eliminar plataforma") },
+                        onClick = {
+                            showMenu.value = false
+                            onDeletePlatform()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD32F2F))
+                        }
+                    )
                 }
             }
             Text(
-                text = "${platform.investments.size} inversiones",
+                text = "${investments.size} inversiones",
                 style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF757575)),
                 modifier = Modifier.padding(top = 2.dp, bottom = 2.dp)
             )
-            val platformTotal = platform.investments.sumOf { it.amount }
+            val platformTotal = investments.sumOf { it.amount }
             Text(
                 text = "Total: ${if (amountsVisible) currencyFormatter.format(platformTotal) else "******"}",
                 style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF388E3C), fontWeight = FontWeight.Bold),
@@ -505,7 +547,7 @@ fun PlatformCard(
             )
             if (expanded.value) {
                 Spacer(modifier = Modifier.height(10.dp))
-                val sortedInvestments = platform.investments.sortedBy { it.isActive.not() }
+                val sortedInvestments = investments.sortedBy { it.isActive.not() }
                 sortedInvestments.forEachIndexed { idx, investment ->
                     Card(
                         modifier = Modifier
@@ -527,7 +569,6 @@ fun PlatformCard(
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     modifier = Modifier.weight(1f)
                                 )
-                                // Tick/Cross activo/inactivo
                                 IconButton(
                                     onClick = { onToggleInvestmentActive(investment.id) },
                                     modifier = Modifier.size(28.dp)
@@ -539,20 +580,16 @@ fun PlatformCard(
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
-                                // Editar inversión
                                 IconButton(
                                     onClick = {
-                                        // Abrir diálogo de edición de inversión
                                         onEditInvestment(investment.id)
                                     },
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(Icons.Default.Edit, contentDescription = "Editar inversión", tint = Color(0xFF1976D2), modifier = Modifier.size(18.dp))
                                 }
-                                // Eliminar inversión
                                 IconButton(
                                     onClick = {
-                                        // Abrir diálogo de confirmación de borrado de inversión
                                         onDeleteInvestment(investment.id)
                                     },
                                     modifier = Modifier.size(28.dp)
