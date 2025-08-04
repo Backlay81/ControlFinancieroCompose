@@ -45,6 +45,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import com.example.controlfinancierocompose.data.model.Investment
 import com.example.controlfinancierocompose.data.model.InvestmentType
 import com.example.controlfinancierocompose.navigation.Screen
@@ -217,8 +221,28 @@ fun PlatformCard(platform: InvestmentPlatform, amountsVisible: Boolean, currency
         border = if (!platform.isActive) BorderStroke(3.dp, Color(0xFFD32F2F)) else BorderStroke(1.dp, Color.Black)
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(platform.name, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)), modifier = Modifier.weight(1f))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    platform.name,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)),
+                    modifier = Modifier.weight(1f)
+                )
+                // Tick/Cross activo/inactivo
+                IconButton(
+                    onClick = { /* TODO: Cambiar estado activo/inactivo de la plataforma */ },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (platform.isActive) Icons.Default.Check else Icons.Default.Close,
+                        contentDescription = if (platform.isActive) "Activo" else "Inactivo",
+                        tint = if (platform.isActive) Color(0xFF388E3C) else Color(0xFFD32F2F),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                // Expandir/colapsar
                 IconButton(
                     onClick = { expanded.value = !expanded.value },
                     modifier = Modifier.size(32.dp)
@@ -229,6 +253,13 @@ fun PlatformCard(platform: InvestmentPlatform, amountsVisible: Boolean, currency
                         tint = Color(0xFF1976D2),
                         modifier = Modifier.size(22.dp)
                     )
+                }
+                // Eliminar plataforma
+                IconButton(
+                    onClick = { /* TODO: Eliminar plataforma */ },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar plataforma", tint = Color(0xFFD32F2F), modifier = Modifier.size(22.dp))
                 }
             }
             Text(text = "${platform.investments.size} inversiones", style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF757575)), modifier = Modifier.padding(top = 2.dp, bottom = 2.dp))
@@ -246,12 +277,48 @@ fun PlatformCard(platform: InvestmentPlatform, amountsVisible: Boolean, currency
                         colors = CardDefaults.cardColors(containerColor = Color.White),
                         elevation = CardDefaults.cardElevation(1.dp),
                         shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(2.dp, Color(0xFF1976D2))
+                        border = if (platform.isActive) BorderStroke(2.dp, Color(0xFF1976D2)) else BorderStroke(2.dp, Color(0xFFD32F2F))
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Text(text = investment.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = investment.name,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                // Tick/Cross activo/inactivo (simulado, depende del modelo)
+                                IconButton(
+                                    onClick = { /* TODO: Cambiar estado activo/inactivo de la inversión */ },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check, // TODO: Cambiar según estado
+                                        contentDescription = "Activo", // TODO: Cambiar según estado
+                                        tint = Color(0xFF388E3C), // TODO: Cambiar según estado
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                // Editar inversión
+                                IconButton(
+                                    onClick = { /* TODO: Editar inversión */ },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Editar inversión", tint = Color(0xFF1976D2), modifier = Modifier.size(18.dp))
+                                }
+                                // Eliminar inversión
+                                IconButton(
+                                    onClick = { /* TODO: Eliminar inversión */ },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar inversión", tint = Color(0xFFD32F2F), modifier = Modifier.size(18.dp))
+                                }
+                            }
+                            Text(text = "Tipo: ${investment.type}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                            Text(text = "Fecha: ${investment.date}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
                             Text(text = "Cantidad: ${if (amountsVisible) currencyFormatter.format(investment.amount) else "******"}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF388E3C)), modifier = Modifier.padding(top = 4.dp))
-                            // Aquí puedes agregar más detalles de la inversión si lo deseas
                         }
                     }
                 }
