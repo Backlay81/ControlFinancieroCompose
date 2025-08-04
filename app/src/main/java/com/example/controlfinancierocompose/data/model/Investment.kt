@@ -1,7 +1,7 @@
 package com.example.controlfinancierocompose.data.model
 
 data class Investment(
-    val id: String,
+    val id: Long,
     val name: String,
     val amount: Double,
     val type: InvestmentType,

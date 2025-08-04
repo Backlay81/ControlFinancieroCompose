@@ -1,5 +1,6 @@
 package com.example.controlfinancierocompose.ui.investments
 
+import com.example.controlfinancierocompose.ui.investments.EditPlatformDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,10 +47,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.TextField
 import com.example.controlfinancierocompose.data.model.Investment
 import com.example.controlfinancierocompose.data.model.InvestmentType
 import com.example.controlfinancierocompose.navigation.Screen
@@ -73,7 +77,7 @@ fun InvestmentsScreen(
     val showDeletePlatformDialog = remember { mutableStateOf(false) }
     val platformToDelete = remember { mutableStateOf<Long?>(null) }
     val showDeleteInvestmentDialog = remember { mutableStateOf(false) }
-    val investmentToDelete = remember { mutableStateOf<Pair<Long, String>?>(null) }
+    val investmentToDelete = remember { mutableStateOf<Pair<Long, Long>?>(null) }
 
     // Estados para edición de plataformas
     val showEditPlatformDialog = remember { mutableStateOf(false) }
@@ -83,7 +87,7 @@ fun InvestmentsScreen(
 
     // Estados para edición de inversiones
     val showEditInvestmentDialog = remember { mutableStateOf(false) }
-    val investmentToEdit = remember { mutableStateOf<Pair<Long, String>?>(null) }
+    val investmentToEdit = remember { mutableStateOf<Pair<Long, Long>?>(null) }
     val editInvestmentName = remember { mutableStateOf("") }
     val editInvestmentAmount = remember { mutableStateOf("") }
     val editInvestmentType = remember { mutableStateOf<InvestmentType?>(null) }
@@ -147,94 +151,71 @@ fun InvestmentsScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 80.dp)
-            ) {
-                // Tarjeta de resumen de inversiones
-                // ...eliminado el card de resumen superior...
-                item {
-                    Card(
+            Column(modifier = Modifier.fillMaxSize()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .heightIn(min = 70.dp, max = 130.dp)
+                        .shadow(6.dp, RoundedCornerShape(22.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                    elevation = CardDefaults.cardElevation(6.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = 2.dp,
+                        color = Color(0xFF1976D2)
+                    )
+                ) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                            .heightIn(min = 70.dp, max = 130.dp)
-                            .shadow(6.dp, RoundedCornerShape(22.dp)),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                        elevation = CardDefaults.cardElevation(6.dp),
-                        shape = RoundedCornerShape(22.dp),
-                        border = BorderStroke(2.dp, Color(0xFF1976D2))
+                            .padding(vertical = 12.dp, horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp, horizontal = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.weight(1f)
-                            ) {
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    "Invertido",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1976D2)
-                                    )
+                                    "Saldo total",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)),
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 if (amountsVisible.value) {
                                     val formatted = currencyFormatter.format(totalInvested)
                                     val clean = formatted.replace("€", "").trim()
-                                    Row(verticalAlignment = androidx.compose.ui.Alignment.Bottom) {
+                                    Row(verticalAlignment = Alignment.Bottom) {
                                         Text(
                                             text = clean,
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                color = Color(0xFF388E3C),
-                                                fontWeight = FontWeight.Bold
-                                            )
+                                            style = MaterialTheme.typography.titleMedium.copy(color = Color(0xFF388E3C), fontWeight = FontWeight.Bold),
                                         )
                                         Text(
                                             text = " €",
-                                            style = MaterialTheme.typography.bodyLarge.copy(
-                                                color = Color(0xFF388E3C),
-                                                fontWeight = FontWeight.Bold
-                                            ),
+                                            style = MaterialTheme.typography.bodyLarge.copy(color = Color(0xFF388E3C), fontWeight = FontWeight.Bold),
                                             modifier = Modifier.padding(start = 2.dp, bottom = 2.dp)
                                         )
                                     }
                                 } else {
                                     Text(
                                         text = "******",
-                                        style = MaterialTheme.typography.titleMedium.copy(
-                                            color = Color(0xFF388E3C), fontWeight = FontWeight.Bold
-                                        )
+                                        style = MaterialTheme.typography.titleMedium.copy(color = Color(0xFF388E3C), fontWeight = FontWeight.Bold),
                                     )
                                 }
                             }
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.weight(1f)
-                            ) {
+                        }
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    "Plataformas",
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1976D2)
-                                    )
+                                    "Inversiones",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)),
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    platformCount.toString(),
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        color = Color(0xFF1976D2), fontWeight = FontWeight.Bold
-                                    )
+                                    investmentCount.toString(),
+                                    style = MaterialTheme.typography.titleMedium.copy(color = Color(0xFF1976D2), fontWeight = FontWeight.Bold),
                                 )
                             }
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.weight(1f)
-                            ) {
+                        }
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 IconButton(
                                     onClick = { amountsVisible.value = !amountsVisible.value },
                                     modifier = Modifier.size(32.dp)
@@ -248,64 +229,162 @@ fun InvestmentsScreen(
                                 }
                                 Text(
                                     if (amountsVisible.value) "Ocultar" else "Mostrar",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color(0xFF1976D2)
-                                    )
+                                    style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF1976D2)),
                                 )
                             }
                         }
                     }
                 }
-                items(platforms.sortedBy { it.isActive.not() }) { platform ->
-                    PlatformCard(
-                        platform = platform,
-                        amountsVisible = amountsVisible.value,
-                        currencyFormatter = currencyFormatter,
-                        onTogglePlatformActive = { viewModel.togglePlatformActiveState(platform.id) },
-                        onEditPlatform = {
-                            platformToEdit.value = platform.id
-                            editPlatformName.value = platform.name
-                            editPlatformActive.value = platform.isActive
-                            showEditPlatformDialog.value = true
-                        },
-                        onDeletePlatform = {
-                            platformToDelete.value = platform.id
-                            showDeletePlatformDialog.value = true
-                        },
-                        onToggleInvestmentActive = { investmentId ->
-                            viewModel.toggleInvestmentActiveState(
-                                platform.id,
-                                investmentId
-                            )
-                        },
-                        onEditInvestment = { investmentId ->
-                            val investment = platform.investments.find { it.id == investmentId }
-                            if (investment != null) {
-                                investmentToEdit.value = platform.id to investmentId
-                                editInvestmentName.value = investment.name
-                                editInvestmentAmount.value = investment.amount.toString()
-                                editInvestmentType.value = investment.type
-                                editInvestmentDate.value = investment.date
-                                editInvestmentActive.value = investment.isActive
-                                showEditInvestmentDialog.value = true
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    val sortedPlatforms = platforms.sortedBy { it.isActive.not() }
+                    items(sortedPlatforms) { platform ->
+                        PlatformCard(
+                            platform = platform,
+                            amountsVisible = amountsVisible.value,
+                            currencyFormatter = currencyFormatter,
+                            onTogglePlatformActive = {
+                                viewModel.togglePlatformActiveState(platform.id)
+                            },
+                            onEditPlatform = {
+                                platformToEdit.value = platform.id
+                                editPlatformName.value = platform.name
+                                editPlatformActive.value = platform.isActive
+                                showEditPlatformDialog.value = true
+                            },
+                            onDeletePlatform = {
+                                platformToDelete.value = platform.id
+                                showDeletePlatformDialog.value = true
+                            },
+                            onToggleInvestmentActive = { investmentId: Long ->
+                                viewModel.toggleInvestmentActiveState(platform.id, investmentId)
+                            },
+                            onEditInvestment = { investmentId: Long ->
+                                val investment = platform.investments.find { it.id == investmentId }
+                                if (investment != null) {
+                                    investmentToEdit.value = Pair(platform.id, investment.id)
+                                    editInvestmentName.value = investment.name
+                                    editInvestmentAmount.value = investment.amount.toString()
+                                    editInvestmentType.value = investment.type
+                                    editInvestmentDate.value = investment.date
+                                    editInvestmentActive.value = investment.isActive
+                                    showEditInvestmentDialog.value = true
+                                }
+                            },
+                            onDeleteInvestment = { investmentId: Long ->
+                                val investment = platform.investments.find { it.id == investmentId }
+                                if (investment != null) {
+                                    investmentToDelete.value = Pair(platform.id, investment.id)
+                                    showDeleteInvestmentDialog.value = true
+                                }
+                            },
+                            onAddInvestment = { platformId ->
+                                // Aquí iría la lógica para mostrar el diálogo de añadir inversión
                             }
-                        },
-                        onDeleteInvestment = { investmentId ->
-                            investmentToDelete.value = platform.id to investmentId
-                            showDeleteInvestmentDialog.value = true
-                        },
-                        onAddInvestment = { platformId ->
-                            // Inicializar para una nueva inversión
-                            investmentToEdit.value = platformId to ""
-                            editInvestmentName.value = ""
-                            editInvestmentAmount.value = ""
-                            editInvestmentType.value = InvestmentType.STOCKS
-                            editInvestmentDate.value = ""
-                            editInvestmentActive.value = true
-                            showEditInvestmentDialog.value = true
-                        }
-                    )
+                        )
+                    }
                 }
+            }
+            // Diálogo de edición de plataforma
+            if (showEditPlatformDialog.value) {
+                EditPlatformDialog(
+                    platformName = editPlatformName.value,
+                    isActive = editPlatformActive.value,
+                    onConfirm = { name, active ->
+                        platformToEdit.value?.let { id ->
+                            viewModel.editPlatform(id, name, active)
+                        }
+                        showEditPlatformDialog.value = false
+                    },
+                    onDismiss = { showEditPlatformDialog.value = false },
+                    onNameChange = { editPlatformName.value = it },
+                    onActiveChange = { editPlatformActive.value = it }
+                )
+            }
+
+            // Diálogo de confirmación de borrado de plataforma
+            if (showDeletePlatformDialog.value && platformToDelete.value != null) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showDeletePlatformDialog.value = false },
+                    title = { Text("Eliminar plataforma") },
+                    text = { Text("¿Seguro que quieres eliminar esta plataforma? Se eliminarán todas sus inversiones.") },
+                    confirmButton = {
+                        Button(onClick = {
+                            platformToDelete.value?.let { id ->
+                                viewModel.deletePlatform(id)
+                            }
+                            showDeletePlatformDialog.value = false
+                        }) {
+                            Text("Eliminar")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showDeletePlatformDialog.value = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
+            }
+            // Diálogo de edición de inversión
+            if (showEditInvestmentDialog.value && investmentToEdit.value != null) {
+                val (platformId, investmentId) = investmentToEdit.value!!
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showEditInvestmentDialog.value = false },
+                    title = { Text("Editar inversión") },
+                    text = {
+                        Column {
+                            TextField(value = editInvestmentName.value, onValueChange = { editInvestmentName.value = it }, label = { Text("Nombre") })
+                            TextField(value = editInvestmentAmount.value, onValueChange = { editInvestmentAmount.value = it }, label = { Text("Cantidad") })
+                            TextField(value = editInvestmentDate.value, onValueChange = { editInvestmentDate.value = it }, label = { Text("Fecha") })
+                            // Puedes agregar más campos aquí si lo necesitas
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            viewModel.updateInvestment(
+                                platformId,
+                                investmentId,
+                                editInvestmentName.value,
+                                editInvestmentAmount.value.toDoubleOrNull() ?: 0.0,
+                                editInvestmentType.value ?: InvestmentType.OTHER,
+                                editInvestmentDate.value,
+                                editInvestmentActive.value
+                            )
+                            showEditInvestmentDialog.value = false
+                        }) {
+                            Text("Guardar")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showEditInvestmentDialog.value = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
+            }
+            // Diálogo de confirmación de borrado de inversión
+            if (showDeleteInvestmentDialog.value && investmentToDelete.value != null) {
+                val (platformId, investmentId) = investmentToDelete.value!!
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showDeleteInvestmentDialog.value = false },
+                    title = { Text("Eliminar inversión") },
+                    text = { Text("¿Seguro que quieres eliminar esta inversión?") },
+                    confirmButton = {
+                        Button(onClick = {
+                            viewModel.deleteInvestment(platformId, investmentId)
+                            showDeleteInvestmentDialog.value = false
+                        }) {
+                            Text("Eliminar")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showDeleteInvestmentDialog.value = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
             }
         }
     }
@@ -320,9 +399,9 @@ fun PlatformCard(
     onTogglePlatformActive: () -> Unit,
     onEditPlatform: () -> Unit,
     onDeletePlatform: () -> Unit,
-    onToggleInvestmentActive: (String) -> Unit,
-    onEditInvestment: (String) -> Unit,
-    onDeleteInvestment: (String) -> Unit,
+    onToggleInvestmentActive: (Long) -> Unit,
+    onEditInvestment: (Long) -> Unit,
+    onDeleteInvestment: (Long) -> Unit,
     onAddInvestment: (Long) -> Unit
 ) {
     val expanded = remember { mutableStateOf(false) }
@@ -337,6 +416,8 @@ fun PlatformCard(
         border = if (!platform.isActive) BorderStroke(3.dp, Color(0xFFD32F2F)) else BorderStroke(1.dp, Color.Black)
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
+            // Menú de opciones agrupadas (overflow menu)
+            val showMenu = remember { mutableStateOf(false) }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -346,18 +427,6 @@ fun PlatformCard(
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)),
                     modifier = Modifier.weight(1f)
                 )
-                // Tick/Cross activo/inactivo
-                IconButton(
-                    onClick = { onTogglePlatformActive() },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = if (platform.isActive) Icons.Default.Check else Icons.Default.Close,
-                        contentDescription = if (platform.isActive) "Activo" else "Inactivo",
-                        tint = if (platform.isActive) Color(0xFF388E3C) else Color(0xFFD32F2F),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
                 // Expandir/colapsar
                 IconButton(
                     onClick = { expanded.value = !expanded.value },
@@ -370,29 +439,57 @@ fun PlatformCard(
                         modifier = Modifier.size(22.dp)
                     )
                 }
-                // Editar plataforma
+                // Menú de tres puntos
                 IconButton(
-                    onClick = { onEditPlatform() },
+                    onClick = { showMenu.value = true },
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        Icons.Default.Edit,
-                        contentDescription = "Editar plataforma",
+                        imageVector = androidx.compose.material.icons.Icons.Default.MoreVert,
+                        contentDescription = "Más opciones",
                         tint = Color(0xFF1976D2),
                         modifier = Modifier.size(22.dp)
                     )
                 }
-                // Eliminar plataforma
-                IconButton(
-                    onClick = { onDeletePlatform() },
-                    modifier = Modifier.size(32.dp)
+                androidx.compose.material3.DropdownMenu(
+                    expanded = showMenu.value,
+                    onDismissRequest = { showMenu.value = false }
                 ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Eliminar plataforma",
-                        tint = Color(0xFFD32F2F),
-                        modifier = Modifier.size(22.dp)
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(if (platform.isActive) "Marcar como inactivo" else "Marcar como activo") },
+                        onClick = {
+                            showMenu.value = false
+                            onTogglePlatformActive()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (platform.isActive) Icons.Default.Close else Icons.Default.Check,
+                                contentDescription = null,
+                                tint = if (platform.isActive) Color(0xFFD32F2F) else Color(0xFF388E3C)
+                            )
+                        }
                     )
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text("Editar plataforma") },
+                        onClick = {
+                            showMenu.value = false
+                            onEditPlatform()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF1976D2))
+                        }
+                    )
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text("Eliminar plataforma") },
+                    onClick = {
+                        showMenu.value = false
+                        // Abrir diálogo de confirmación de borrado
+                        onDeletePlatform()
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD32F2F))
+                    }
+                )
                 }
             }
             Text(
@@ -444,14 +541,20 @@ fun PlatformCard(
                                 }
                                 // Editar inversión
                                 IconButton(
-                                    onClick = { onEditInvestment(investment.id) },
+                                    onClick = {
+                                        // Abrir diálogo de edición de inversión
+                                        onEditInvestment(investment.id)
+                                    },
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(Icons.Default.Edit, contentDescription = "Editar inversión", tint = Color(0xFF1976D2), modifier = Modifier.size(18.dp))
                                 }
                                 // Eliminar inversión
                                 IconButton(
-                                    onClick = { onDeleteInvestment(investment.id) },
+                                    onClick = {
+                                        // Abrir diálogo de confirmación de borrado de inversión
+                                        onDeleteInvestment(investment.id)
+                                    },
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(Icons.Default.Delete, contentDescription = "Eliminar inversión", tint = Color(0xFFD32F2F), modifier = Modifier.size(18.dp))

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -94,6 +95,9 @@ fun AccountsScreen(accountsViewModel: AccountsViewModel, onNavigate: (Int) -> Un
     var bankToDelete by remember { mutableStateOf<Long?>(null) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var accountToDelete by remember { mutableStateOf<Pair<Long, Long>?>(null) }
+
+    var bankToEdit by remember { mutableStateOf<Bank?>(null) }
+    var showEditBankDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -239,6 +243,8 @@ fun AccountsScreen(accountsViewModel: AccountsViewModel, onNavigate: (Int) -> Un
                         }
                     ) {
                         Column(modifier = Modifier.padding(22.dp)) {
+                            // Menú de opciones agrupadas (overflow menu)
+                            val showMenu = remember { mutableStateOf(false) }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -248,21 +254,7 @@ fun AccountsScreen(accountsViewModel: AccountsViewModel, onNavigate: (Int) -> Un
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1976D2)),
                                     modifier = Modifier.weight(1f)
                                 )
-                                // Tick/Cross a la izquierda
-                                IconButton(
-                                    onClick = {
-                                        val updated = bank.copy(isActive = !bank.isActive)
-                                        accountsViewModel.updateBank(updated)
-                                    },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (bank.isActive) Icons.Default.Check else Icons.Default.Close,
-                                        contentDescription = if (bank.isActive) "Activo" else "Inactivo",
-                                        tint = if (bank.isActive) Color(0xFF388E3C) else Color(0xFFD32F2F),
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
+                                // Expandir/colapsar
                                 IconButton(
                                     onClick = { expanded = !expanded },
                                     modifier = Modifier.size(32.dp)
@@ -274,14 +266,59 @@ fun AccountsScreen(accountsViewModel: AccountsViewModel, onNavigate: (Int) -> Un
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
+                                // Menú de tres puntos
                                 IconButton(
-                                    onClick = {
-                                        bankToDelete = bank.id
-                                        showDeleteBankDialog = true
-                                    },
+                                    onClick = { showMenu.value = true },
                                     modifier = Modifier.size(32.dp)
                                 ) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar banco", tint = Color(0xFFD32F2F), modifier = Modifier.size(22.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "Más opciones",
+                                        tint = Color(0xFF1976D2),
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                                androidx.compose.material3.DropdownMenu(
+                                    expanded = showMenu.value,
+                                    onDismissRequest = { showMenu.value = false }
+                                ) {
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text(if (bank.isActive) "Marcar como inactivo" else "Marcar como activo") },
+                                        onClick = {
+                                            showMenu.value = false
+                                            val updated = bank.copy(isActive = !bank.isActive)
+                                            accountsViewModel.updateBank(updated)
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = if (bank.isActive) Icons.Default.Close else Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = if (bank.isActive) Color(0xFFD32F2F) else Color(0xFF388E3C)
+                                            )
+                                        }
+                                    )
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text("Editar banco") },
+                                        onClick = {
+                                            showMenu.value = false
+                                            bankToEdit = bank
+                                            showEditBankDialog = true
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF1976D2))
+                                        }
+                                    )
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text("Eliminar banco") },
+                                        onClick = {
+                                            showMenu.value = false
+                                            bankToDelete = bank.id
+                                            showDeleteBankDialog = true
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD32F2F))
+                                        }
+                                    )
                                 }
                             }
                             Text(

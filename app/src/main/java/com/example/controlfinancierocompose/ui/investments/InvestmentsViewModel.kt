@@ -28,7 +28,7 @@ class InvestmentsViewModel : ViewModel() {
                 isActive = true,
                 investments = listOf(
                     Investment(
-                        id = "1", 
+                        id = 1L, 
                         name = "Crypto", 
                         amount = 1000.0, 
                         type = InvestmentType.CRYPTO, 
@@ -36,7 +36,7 @@ class InvestmentsViewModel : ViewModel() {
                         isActive = true
                     ),
                     Investment(
-                        id = "2", 
+                        id = 2L, 
                         name = "Stocks", 
                         amount = 500.0, 
                         type = InvestmentType.STOCKS, 
@@ -51,7 +51,7 @@ class InvestmentsViewModel : ViewModel() {
                 isActive = false,
                 investments = listOf(
                     Investment(
-                        id = "3", 
+                        id = 3L, 
                         name = "ETF", 
                         amount = 200.0, 
                         type = InvestmentType.MUTUAL_FUNDS, 
@@ -63,6 +63,10 @@ class InvestmentsViewModel : ViewModel() {
         )
     }
     
+    // Función para editar plataforma (alias de updatePlatform)
+    fun editPlatform(platformId: Long, name: String, isActive: Boolean) {
+        updatePlatform(platformId, name, isActive)
+    }
     // Funciones para gestionar plataformas
     
     fun togglePlatformActiveState(platformId: Long) {
@@ -109,14 +113,12 @@ class InvestmentsViewModel : ViewModel() {
     
     // Funciones para gestionar inversiones
     
-    fun toggleInvestmentActiveState(platformId: Long, investmentId: String) {
+    fun toggleInvestmentActiveState(platformId: Long, investmentId: Long) {
         _platforms.update { platformList ->
             platformList.map { platform ->
                 if (platform.id == platformId) {
-                    // Encontrar la plataforma correcta
                     val updatedInvestments = platform.investments.map { investment ->
                         if (investment.id == investmentId) {
-                            // Actualizar el estado de la inversión
                             investment.copy(isActive = !investment.isActive)
                         } else {
                             investment
@@ -131,19 +133,18 @@ class InvestmentsViewModel : ViewModel() {
     }
     
     fun addInvestment(platformId: Long, name: String, amount: Double, type: InvestmentType, date: String) {
+        val newId = (_platforms.value.flatMap { it.investments }.maxOfOrNull { it.id } ?: 0L) + 1L
         val newInvestment = Investment(
-            id = UUID.randomUUID().toString(),
+            id = newId,
             name = name,
             amount = amount,
             type = type,
             date = date,
             isActive = true
         )
-        
         _platforms.update { platformList ->
             platformList.map { platform ->
                 if (platform.id == platformId) {
-                    // Añadir la inversión a la plataforma correcta
                     platform.copy(investments = platform.investments + newInvestment)
                 } else {
                     platform
@@ -152,14 +153,12 @@ class InvestmentsViewModel : ViewModel() {
         }
     }
     
-    fun updateInvestment(platformId: Long, investmentId: String, name: String, amount: Double, type: InvestmentType, date: String, isActive: Boolean) {
+    fun updateInvestment(platformId: Long, investmentId: Long, name: String, amount: Double, type: InvestmentType, date: String, isActive: Boolean) {
         _platforms.update { platformList ->
             platformList.map { platform ->
                 if (platform.id == platformId) {
-                    // Encontrar la plataforma correcta
                     val updatedInvestments = platform.investments.map { investment ->
                         if (investment.id == investmentId) {
-                            // Actualizar la inversión
                             investment.copy(
                                 name = name,
                                 amount = amount,
@@ -179,11 +178,10 @@ class InvestmentsViewModel : ViewModel() {
         }
     }
     
-    fun deleteInvestment(platformId: Long, investmentId: String) {
+    fun deleteInvestment(platformId: Long, investmentId: Long) {
         _platforms.update { platformList ->
             platformList.map { platform ->
                 if (platform.id == platformId) {
-                    // Eliminar la inversión de la plataforma correcta
                     platform.copy(investments = platform.investments.filter { it.id != investmentId })
                 } else {
                     platform
