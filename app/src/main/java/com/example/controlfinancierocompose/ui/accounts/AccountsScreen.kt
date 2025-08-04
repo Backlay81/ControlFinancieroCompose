@@ -95,20 +95,21 @@ fun AccountsScreen(accountsViewModel: AccountsViewModel, onNavigate: (Int) -> Un
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var accountToDelete by remember { mutableStateOf<Pair<Long, Long>?>(null) }
 
-    var selectedSection by remember { mutableStateOf(0) }
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Bancos y Cuentas",
-                        modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1976D2), titleContentColor = Color.White)
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .background(Color(0xFF1976D2)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Bancos y Cuentas",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -117,64 +118,6 @@ fun AccountsScreen(accountsViewModel: AccountsViewModel, onNavigate: (Int) -> Un
                 contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Agregar banco")
-            }
-        },
-        bottomBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(vertical = 4.dp)
-                    .navigationBarsPadding(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                val items = listOf(
-                    Triple("Dashboard", Icons.Filled.Home, "Dashboard"),
-                    Triple("Cuentas", Icons.Filled.AccountCircle, "Cuentas"),
-                    Triple("Inversiones", Icons.Filled.TrendingUp, "Inversiones"),
-                    Triple("Calendario", Icons.Filled.CalendarToday, "Calendario"),
-                    Triple("Credenciales", Icons.Filled.VpnKey, "Credenciales")
-                )
-                items.forEachIndexed { index, item ->
-                    val selected = selectedSection == index
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { 
-                                selectedSection = index
-                                onNavigate(index)
-                            }
-                            .padding(vertical = 2.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            item.second,
-                            contentDescription = item.first,
-                            modifier = Modifier
-                                .size(if (selected) 32.dp else 28.dp)
-                                .padding(bottom = 2.dp),
-                            tint = if (selected) Color(0xFF1976D2) else Color(0xFF757575)
-                        )
-                        Text(
-                            item.third,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = if (selected) Color(0xFF1976D2) else Color(0xFF757575),
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                            ),
-                            maxLines = 1
-                        )
-                        if (selected) {
-                            Box(
-                                modifier = Modifier
-                                    .height(3.dp)
-                                    .width(32.dp)
-                                    .background(Color(0xFF1976D2), RoundedCornerShape(2.dp))
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.height(3.dp))
-                        }
-                    }
-                }
             }
         }
     ) { padding ->
@@ -192,7 +135,7 @@ fun AccountsScreen(accountsViewModel: AccountsViewModel, onNavigate: (Int) -> Un
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
                             .heightIn(min = 70.dp, max = 130.dp)
                             .shadow(6.dp, RoundedCornerShape(22.dp)),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
