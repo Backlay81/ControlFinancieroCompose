@@ -10,7 +10,10 @@ data class InvestmentEntity(
     val platformId: Long,
     val name: String,
     val amount: Double,
-    val type: InvestmentType,
+    val shares: Double = 0.0,
+    val price: Double = 0.0,
+    val type: String,
+    val notes: String = "",
     val date: String,
     val isActive: Boolean = true
 )

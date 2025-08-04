@@ -1,7 +1,5 @@
 package com.example.controlfinancierocompose.ui.investments
 
-import com.example.controlfinancierocompose.ui.investments.EditPlatformDialog
-import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModelRoom
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,52 +11,50 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.draw.shadow
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.TextField
 import com.example.controlfinancierocompose.data.InvestmentEntity
 import com.example.controlfinancierocompose.data.InvestmentPlatformEntity
 import com.example.controlfinancierocompose.data.model.InvestmentType
-import com.example.controlfinancierocompose.navigation.Screen
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -87,9 +83,25 @@ fun InvestmentsScreen(
     val investmentToEdit = remember { mutableStateOf<Pair<Long, Long>?>(null) }
     val editInvestmentName = remember { mutableStateOf("") }
     val editInvestmentAmount = remember { mutableStateOf("") }
-    val editInvestmentType = remember { mutableStateOf<InvestmentType?>(null) }
-    val editInvestmentDate = remember { mutableStateOf("") }
+    val editInvestmentShares = remember { mutableStateOf("") }
+    val editInvestmentPrice = remember { mutableStateOf("") }
+    val editInvestmentType = remember { mutableStateOf("") }
+    val editInvestmentNotes = remember { mutableStateOf("") }
+    // Eliminado campo de fecha
     val editInvestmentActive = remember { mutableStateOf(true) }
+    // Estados para DatePickerDialog
+
+
+    // Estados para añadir inversión
+    val showAddInvestmentDialog = remember { mutableStateOf(false) }
+    val addInvestmentPlatformId = remember { mutableStateOf<Long?>(null) }
+    val addInvestmentName = remember { mutableStateOf("") }
+    val addInvestmentAmount = remember { mutableStateOf("") }
+    val addInvestmentShares = remember { mutableStateOf("") }
+    val addInvestmentPrice = remember { mutableStateOf("") }
+    val addInvestmentType = remember { mutableStateOf("") }
+    val addInvestmentNotes = remember { mutableStateOf("") }
+    val addInvestmentDate = remember { mutableStateOf("") }
 
     // Obtenemos la lista de plataformas del ViewModel
     val platforms by viewModel.platforms.collectAsState(initial = emptyList())
@@ -301,8 +313,10 @@ fun InvestmentsScreen(
                                     investmentToEdit.value = Pair(platform.id, investment.id)
                                     editInvestmentName.value = investment.name
                                     editInvestmentAmount.value = investment.amount.toString()
+                                    editInvestmentShares.value = investment.shares.toString()
+                                    editInvestmentPrice.value = investment.price.toString()
                                     editInvestmentType.value = investment.type
-                                    editInvestmentDate.value = investment.date
+                                    editInvestmentNotes.value = investment.notes
                                     editInvestmentActive.value = investment.isActive
                                     showEditInvestmentDialog.value = true
                                 }
@@ -315,7 +329,13 @@ fun InvestmentsScreen(
                                 }
                             },
                             onAddInvestment = { platformId ->
-                                // Aquí iría la lógica para mostrar el diálogo de añadir inversión
+    addInvestmentPlatformId.value = platformId
+    addInvestmentName.value = ""
+    addInvestmentAmount.value = ""
+    addInvestmentType.value = ""
+    addInvestmentNotes.value = ""
+    addInvestmentDate.value = ""
+    showAddInvestmentDialog.value = true
                             }
                         )
                     }
@@ -328,14 +348,12 @@ fun InvestmentsScreen(
                     if (platform != null) {
                         EditPlatformDialog(
                             platformName = editPlatformName.value,
-                            isActive = editPlatformActive.value,
-                            onConfirm = { name, active ->
-                                viewModel.updatePlatform(platform.copy(name = name, isActive = active))
+                            onConfirm = { name ->
+                                viewModel.updatePlatform(platform.copy(name = name))
                                 showEditPlatformDialog.value = false
                             },
                             onDismiss = { showEditPlatformDialog.value = false },
-                            onNameChange = { editPlatformName.value = it },
-                            onActiveChange = { editPlatformActive.value = it }
+                            onNameChange = { editPlatformName.value = it }
                         )
                     }
                 }
@@ -375,35 +393,203 @@ fun InvestmentsScreen(
                         title = { Text("Editar inversión") },
                         text = {
                             Column {
-                                TextField(value = editInvestmentName.value, onValueChange = { editInvestmentName.value = it }, label = { Text("Nombre") })
-                                TextField(value = editInvestmentAmount.value, onValueChange = { editInvestmentAmount.value = it }, label = { Text("Cantidad") })
-                                TextField(value = editInvestmentDate.value, onValueChange = { editInvestmentDate.value = it }, label = { Text("Fecha") })
-                                // Puedes agregar más campos aquí si lo necesitas
+                                TextField(
+                                    value = editInvestmentName.value,
+                                    onValueChange = { editInvestmentName.value = it },
+                                    label = { Text("Nombre de la inversión") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                                )
+                                TextField(
+                                    value = editInvestmentAmount.value,
+                                    onValueChange = { editInvestmentAmount.value = it },
+                                    label = { Text("Cantidad invertida total") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                                )
+                                TextField(
+                                    value = editInvestmentShares.value,
+                                    onValueChange = { editInvestmentShares.value = it },
+                                    label = { Text("Número de acciones") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                                )
+                                TextField(
+                                    value = editInvestmentPrice.value,
+                                    onValueChange = { editInvestmentPrice.value = it },
+                                    label = { Text("Precio de compra por acción") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                                )
+                                TextField(
+                                    value = editInvestmentType.value,
+                                    onValueChange = { editInvestmentType.value = it },
+                                    label = { Text("Tipo de inversión") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                                )
+                                TextField(
+                                    value = editInvestmentNotes.value,
+                                    onValueChange = { editInvestmentNotes.value = it },
+                                    label = { Text("Notas") },
+                                    singleLine = false,
+                                    maxLines = 4,
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                                )
                             }
                         },
                         confirmButton = {
-                            Button(onClick = {
-                                viewModel.updateInvestment(
-                                    investment.copy(
-                                        name = editInvestmentName.value,
-                                        amount = editInvestmentAmount.value.toDoubleOrNull() ?: 0.0,
-                                        type = editInvestmentType.value ?: InvestmentType.OTHER,
-                                        date = editInvestmentDate.value,
-                                        isActive = editInvestmentActive.value
-                                    )
-                                )
-                                showEditInvestmentDialog.value = false
-                            }) {
-                                Text("Guardar")
-                            }
-                        },
-                        dismissButton = {
-                            Button(onClick = { showEditInvestmentDialog.value = false }) {
-                                Text("Cancelar")
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                    IconButton(
+                                        onClick = { showEditInvestmentDialog.value = false },
+                                        modifier = Modifier.size(48.dp)
+                                    ) {
+                                        Icon(Icons.Default.Close, contentDescription = "Cancelar", tint = Color(0xFF757575), modifier = Modifier.size(32.dp))
+                                    }
+                                    Text("Cancelar", style = MaterialTheme.typography.labelSmall)
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.updateInvestment(
+                                                investment.copy(
+                                                    name = editInvestmentName.value,
+                                                    amount = editInvestmentAmount.value.toDoubleOrNull() ?: 0.0,
+                                                    shares = editInvestmentShares.value.toDoubleOrNull() ?: 0.0,
+                                                    price = editInvestmentPrice.value.toDoubleOrNull() ?: 0.0,
+                                                    type = editInvestmentType.value,
+                                                    notes = editInvestmentNotes.value,
+                                                    isActive = editInvestmentActive.value
+                                                )
+                                            )
+                                            showEditInvestmentDialog.value = false
+                                        },
+                                        modifier = Modifier.size(48.dp)
+                                    ) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Guardar", tint = Color(0xFF1976D2), modifier = Modifier.size(32.dp))
+                                    }
+                                    Text("Guardar", style = MaterialTheme.typography.labelSmall)
+                                }
                             }
                         }
                     )
                 }
+            }
+
+            // Diálogo de añadir inversión
+            if (showAddInvestmentDialog.value && addInvestmentPlatformId.value != null) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showAddInvestmentDialog.value = false },
+                    title = { Text("Agregar inversión") },
+                    text = {
+                        Column {
+                            TextField(
+                                value = addInvestmentName.value,
+                                onValueChange = { addInvestmentName.value = it },
+                                label = { Text("Nombre de la inversión") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                            )
+                            TextField(
+                                value = addInvestmentAmount.value,
+                                onValueChange = { addInvestmentAmount.value = it },
+                                label = { Text("Cantidad invertida total") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                            )
+                            TextField(
+                                value = addInvestmentShares.value,
+                                onValueChange = { addInvestmentShares.value = it },
+                                label = { Text("Número de acciones") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                            )
+                            TextField(
+                                value = addInvestmentPrice.value,
+                                onValueChange = { addInvestmentPrice.value = it },
+                                label = { Text("Precio de compra por acción") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                            )
+                            TextField(
+                                value = addInvestmentType.value,
+                                onValueChange = { addInvestmentType.value = it },
+                                label = { Text("Tipo de inversión") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                            )
+                            TextField(
+                                value = addInvestmentNotes.value,
+                                onValueChange = { addInvestmentNotes.value = it },
+                                label = { Text("Notas") },
+                                singleLine = false,
+                                maxLines = 4,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                IconButton(
+                                    onClick = { showAddInvestmentDialog.value = false },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Cancelar", tint = Color(0xFF757575), modifier = Modifier.size(32.dp))
+                                }
+                                Text("Cancelar", style = MaterialTheme.typography.labelSmall)
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                IconButton(
+                                    onClick = {
+                                        val platformId = addInvestmentPlatformId.value!!
+                                        val name = addInvestmentName.value
+                                        val amount = addInvestmentAmount.value.toDoubleOrNull() ?: 0.0
+                                        val shares = addInvestmentShares.value.toDoubleOrNull() ?: 0.0
+                                        val price = addInvestmentPrice.value.toDoubleOrNull() ?: 0.0
+                                        val type = addInvestmentType.value
+                                        val notes = addInvestmentNotes.value
+                                        val date = addInvestmentDate.value
+                                        if (name.isNotBlank()) {
+                                            viewModel.addInvestment(
+                                                InvestmentEntity(
+                                                    name = name,
+                                                    amount = amount,
+                                                    shares = shares,
+                                                    price = price,
+                                                    type = type,
+                                                    notes = notes,
+                                                    date = date,
+                                                    isActive = true,
+                                                    platformId = platformId
+                                                )
+                                            )
+                                            viewModel.selectPlatform(platformId)
+                                            showAddInvestmentDialog.value = false
+                                        }
+                                    },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Guardar", tint = Color(0xFF1976D2), modifier = Modifier.size(32.dp))
+                                }
+                                Text("Guardar", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                )
             }
             // Diálogo de confirmación de borrado de inversión
             if (showDeleteInvestmentDialog.value && investmentToDelete.value != null) {
@@ -597,8 +783,22 @@ fun PlatformCardRoom(
                                     Icon(Icons.Default.Delete, contentDescription = "Eliminar inversión", tint = Color(0xFFD32F2F), modifier = Modifier.size(18.dp))
                                 }
                             }
-                            Text(text = "Tipo: ${investment.type}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
-                            Text(text = "Fecha: ${investment.date}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                            // Mostrar solo los datos que existan o sean relevantes
+                            if (investment.shares > 0.0) {
+                                Text(text = "Acciones: ${investment.shares}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                            }
+                            if (investment.price > 0.0) {
+                                Text(text = "Precio: ${currencyFormatter.format(investment.price)}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                            }
+                            if (investment.type.isNotBlank()) {
+                                Text(text = "Tipo: ${investment.type}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                            }
+                            if (investment.date.isNotBlank()) {
+                                Text(text = "Fecha: ${investment.date}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                            }
+                            if (investment.notes.isNotBlank()) {
+                                Text(text = "Notas: ${investment.notes}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                            }
                             Text(text = "Cantidad: ${if (amountsVisible) currencyFormatter.format(investment.amount) else "******"}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF388E3C)), modifier = Modifier.padding(top = 4.dp))
                         }
                     }

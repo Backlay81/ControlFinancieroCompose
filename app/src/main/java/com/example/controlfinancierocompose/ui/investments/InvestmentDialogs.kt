@@ -37,11 +37,9 @@ import java.util.Locale
 @Composable
 fun EditPlatformDialog(
     platformName: String,
-    isActive: Boolean,
-    onConfirm: (name: String, active: Boolean) -> Unit,
+    onConfirm: (name: String) -> Unit,
     onDismiss: () -> Unit,
-    onNameChange: (String) -> Unit,
-    onActiveChange: (Boolean) -> Unit
+    onNameChange: (String) -> Unit
 ) {
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
@@ -54,18 +52,10 @@ fun EditPlatformDialog(
                     label = { androidx.compose.material3.Text("Nombre de la plataforma") },
                     modifier = androidx.compose.ui.Modifier.fillMaxWidth()
                 )
-                androidx.compose.foundation.layout.Spacer(modifier = androidx.compose.ui.Modifier.height(12.dp))
-                androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    androidx.compose.material3.Text("Activa", modifier = androidx.compose.ui.Modifier.weight(1f))
-                    androidx.compose.material3.Switch(
-                        checked = isActive,
-                        onCheckedChange = onActiveChange
-                    )
-                }
             }
         },
         confirmButton = {
-            androidx.compose.material3.Button(onClick = { onConfirm(platformName, isActive) }, enabled = platformName.isNotBlank()) {
+            androidx.compose.material3.Button(onClick = { onConfirm(platformName) }, enabled = platformName.isNotBlank()) {
                 androidx.compose.material3.Text("Guardar")
             }
         },
