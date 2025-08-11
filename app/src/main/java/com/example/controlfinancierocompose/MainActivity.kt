@@ -43,7 +43,7 @@ import com.example.controlfinancierocompose.navigation.Screen
 import com.example.controlfinancierocompose.ui.accounts.AccountsScreen
 import com.example.controlfinancierocompose.ui.accounts.AccountsViewModel
 import com.example.controlfinancierocompose.ui.investments.InvestmentsScreen
-import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModelRoom
+import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModel
 import com.example.controlfinancierocompose.ui.theme.ControlFinancieroComposeTheme
 
 class MainActivity : ComponentActivity() {
@@ -52,7 +52,10 @@ class MainActivity : ComponentActivity() {
         AccountsViewModel.Factory(app.repository)
     }
     
-    private val investmentsViewModel: InvestmentsViewModelRoom by viewModels()
+    private val investmentsViewModel: InvestmentsViewModel by viewModels {
+        val app = application as FinancialControlApplication
+        InvestmentsViewModel.Factory(app.repository)
+    }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,7 +79,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     accountsViewModel: AccountsViewModel,
-    investmentsViewModel: InvestmentsViewModelRoom
+    investmentsViewModel: InvestmentsViewModel
 ) {
     var currentScreen by remember { mutableStateOf(Screen.ACCOUNTS) } // Por defecto mostramos la pantalla de cuentas
     var selectedSection by remember { mutableStateOf(currentScreen.index) }

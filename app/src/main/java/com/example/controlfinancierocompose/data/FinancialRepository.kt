@@ -9,7 +9,9 @@ import kotlinx.coroutines.flow.map
 
 class FinancialRepository(
     private val bankDao: BankDao,
-    private val accountDao: AccountDao
+    private val accountDao: AccountDao,
+    private val platformDao: PlatformDao,
+    private val investmentDao: InvestmentDao
 ) {
     // Bank operations
     // Combinamos los flujos de bancos y cuentas
@@ -87,13 +89,72 @@ class FinancialRepository(
         return accountDao.getTotalBalanceByCurrency(currency) ?: 0.0
     }
     
+    // Operaciones de plataformas de inversión
+    suspend fun getAllPlatforms(): List<InvestmentPlatformEntity> {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            platformDao.getAllPlatforms()
+        }
+    }
+    
+    suspend fun insertPlatform(platform: InvestmentPlatformEntity): Long {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            platformDao.insertPlatform(platform)
+            platform.id ?: -1
+        }
+    }
+    
+    suspend fun updatePlatform(platform: InvestmentPlatformEntity) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            platformDao.updatePlatform(platform)
+        }
+    }
+    
+    suspend fun deletePlatform(platform: InvestmentPlatformEntity) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            platformDao.deletePlatform(platform)
+        }
+    }
+    
+    // Operaciones de inversiones
+    suspend fun getInvestmentsForPlatform(platformId: Long): List<InvestmentEntity> {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            investmentDao.getInvestmentsForPlatform(platformId)
+        }
+    }
+
+    suspend fun getAllInvestments(): List<InvestmentEntity> {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            investmentDao.getAllInvestments()
+        }
+    }
+    
+    suspend fun insertInvestment(investment: InvestmentEntity): Long {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val id = investmentDao.insertInvestment(investment)
+            id
+        }
+    }
+    
+    suspend fun updateInvestment(investment: InvestmentEntity) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            investmentDao.updateInvestment(investment)
+        }
+    }
+    
+    suspend fun deleteInvestment(investment: InvestmentEntity) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            investmentDao.deleteInvestment(investment)
+        }
+    }
+    
     // Función para agregar datos de prueba (útil para depuración)
     suspend fun addSampleData() {
-        // Añadir algunos bancos
-        val bank1Id = bankDao.insertBank(BankEntity(name = "Banco Santander"))
-        val bank2Id = bankDao.insertBank(BankEntity(name = "BBVA"))
-        
-        // Añadir algunas cuentas para el primer banco
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            // Añadir algunos bancos
+            val bank1Id = bankDao.insertBank(BankEntity(name = "Banco Santander"))
+            val bank2Id = bankDao.insertBank(BankEntity(name = "BBVA"))
+            
+            // Añadir algunas cuentas para el primer banco
         accountDao.insertAccount(AccountEntity(
             bankId = bank1Id,
             holder = "Juan Pérez",
@@ -121,5 +182,6 @@ class FinancialRepository(
             currency = "EUR",
             type = "Nómina"
         ))
+        }
     }
 }

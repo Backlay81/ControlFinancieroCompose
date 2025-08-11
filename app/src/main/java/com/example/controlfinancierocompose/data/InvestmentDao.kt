@@ -5,14 +5,17 @@ import androidx.room.*
 @Dao
 interface InvestmentDao {
     @Query("SELECT * FROM investments WHERE platformId = :platformId")
-    fun getInvestmentsForPlatform(platformId: Long): List<InvestmentEntity>
+    suspend fun getInvestmentsForPlatform(platformId: Long): List<InvestmentEntity>
 
-    @Insert
-    fun insertInvestment(investment: InvestmentEntity)
+    @Query("SELECT * FROM investments")
+    suspend fun getAllInvestments(): List<InvestmentEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertInvestment(investment: InvestmentEntity): Long
 
     @Update
-    fun updateInvestment(investment: InvestmentEntity)
+    suspend fun updateInvestment(investment: InvestmentEntity)
 
     @Delete
-    fun deleteInvestment(investment: InvestmentEntity)
+    suspend fun deleteInvestment(investment: InvestmentEntity)
 }

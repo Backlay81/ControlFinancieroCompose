@@ -2,20 +2,21 @@ package com.example.controlfinancierocompose.ui.investments
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.controlfinancierocompose.data.AppDatabase
 import com.example.controlfinancierocompose.data.InvestmentPlatformEntity
 import com.example.controlfinancierocompose.data.InvestmentEntity
 import com.example.controlfinancierocompose.data.PlatformDao
 import com.example.controlfinancierocompose.data.InvestmentDao
+import com.example.controlfinancierocompose.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class InvestmentsViewModelRoom(app: Application) : AndroidViewModel(app) {
-    private val db = AppDatabase.getDatabase(app)
-    private val platformDao: PlatformDao = db.platformDao()
-    private val investmentDao: InvestmentDao = db.investmentDao()
+    private val platformDao: PlatformDao = AppContainer.providePlatformDao(app)
+    private val investmentDao: InvestmentDao = AppContainer.provideInvestmentDao(app)
 
     private val _platforms = MutableStateFlow<List<InvestmentPlatformEntity>>(emptyList())
     val platforms: StateFlow<List<InvestmentPlatformEntity>> = _platforms
@@ -30,6 +31,17 @@ class InvestmentsViewModelRoom(app: Application) : AndroidViewModel(app) {
             _platforms.value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 platformDao.getAllPlatforms()
             }
+        }
+    }
+    
+    // Factory para crear el ViewModel con el contexto de aplicación
+    class Factory(private val application: Application) : ViewModelProvider.Factory {
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(InvestmentsViewModelRoom::class.java)) {
+                @Suppress("UNCHECKED_CAST")
+                return InvestmentsViewModelRoom(application) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
 
@@ -81,15 +93,13 @@ class InvestmentsViewModelRoom(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun addInvestment(investment: InvestmentEntity) {
+    fun addInvestment(investment: InvestmentEntity, platformId: Long) {
         viewModelScope.launch {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 investmentDao.insertInvestment(investment)
             }
-            selectedPlatformId?.let {
-                _investments.value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    investmentDao.getInvestmentsForPlatform(it)
-                }
+            _investments.value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                investmentDao.getInvestmentsForPlatform(platformId)
             }
         }
     }

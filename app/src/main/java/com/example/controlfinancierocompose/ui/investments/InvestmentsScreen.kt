@@ -63,7 +63,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvestmentsScreen(
-    viewModel: InvestmentsViewModelRoom,
+    viewModel: InvestmentsViewModel,
     onNavigate: (Int) -> Unit
 ) {
     // Estados para confirmación de borrado
@@ -330,6 +330,7 @@ fun InvestmentsScreen(
                             },
                             onAddInvestment = { platformId ->
     addInvestmentPlatformId.value = platformId
+    viewModel.selectPlatform(platformId)
     addInvestmentName.value = ""
     addInvestmentAmount.value = ""
     addInvestmentType.value = ""
@@ -485,8 +486,26 @@ fun InvestmentsScreen(
 
             // Diálogo de añadir inversión
             if (showAddInvestmentDialog.value && addInvestmentPlatformId.value != null) {
+                // Limpiar campos al abrir el diálogo
+                addInvestmentName.value = ""
+                addInvestmentAmount.value = ""
+                addInvestmentShares.value = ""
+                addInvestmentPrice.value = ""
+                addInvestmentType.value = ""
+                addInvestmentNotes.value = ""
+                addInvestmentDate.value = ""
                 androidx.compose.material3.AlertDialog(
-                    onDismissRequest = { showAddInvestmentDialog.value = false },
+                    onDismissRequest = {
+                        showAddInvestmentDialog.value = false
+                        // Limpiar campos al cerrar el diálogo
+                        addInvestmentName.value = ""
+                        addInvestmentAmount.value = ""
+                        addInvestmentShares.value = ""
+                        addInvestmentPrice.value = ""
+                        addInvestmentType.value = ""
+                        addInvestmentNotes.value = ""
+                        addInvestmentDate.value = ""
+                    },
                     title = { Text("Agregar inversión") },
                     text = {
                         Column {
@@ -564,8 +583,12 @@ fun InvestmentsScreen(
                                         val notes = addInvestmentNotes.value
                                         val date = addInvestmentDate.value
                                         if (name.isNotBlank()) {
+                                            // Get the max investment ID and increment by 1 for the new ID
+                                            val investments = viewModel.investments.value
+                                            val newId = (investments.maxOfOrNull { it.id } ?: 0) + 1
                                             viewModel.addInvestment(
                                                 InvestmentEntity(
+                                                    id = newId,
                                                     name = name,
                                                     amount = amount,
                                                     shares = shares,
@@ -577,7 +600,6 @@ fun InvestmentsScreen(
                                                     platformId = platformId
                                                 )
                                             )
-                                            viewModel.selectPlatform(platformId)
                                             showAddInvestmentDialog.value = false
                                         }
                                     },
