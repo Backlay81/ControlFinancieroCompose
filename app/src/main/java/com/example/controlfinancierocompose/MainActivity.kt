@@ -172,14 +172,8 @@ fun MainScreen(
                     )
                 }
                 Screen.CALENDAR -> {
-                    // Calendario (por implementar)
-                    AccountsScreen(
-                        accountsViewModel = accountsViewModel,
-                        onNavigate = { screenIndex -> 
-                            selectedSection = screenIndex
-                            currentScreen = Screen.fromIndex(screenIndex) 
-                        }
-                    )
+                    // Calendario
+                    com.example.controlfinancierocompose.ui.calendar.CalendarScreen()
                 }
                 Screen.CREDENTIALS -> {
                     // Credenciales (por implementar)

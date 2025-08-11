@@ -10,9 +10,10 @@ import androidx.room.RoomDatabase
         BankEntity::class,
         AccountEntity::class,
         InvestmentPlatformEntity::class,
-        InvestmentEntity::class
+        InvestmentEntity::class,
+        CalendarEventEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -20,6 +21,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun platformDao(): PlatformDao
     abstract fun investmentDao(): InvestmentDao
+    abstract fun calendarEventDao(): CalendarEventDao
 
     companion object {
         @Volatile
@@ -32,6 +34,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "financial_control_database"
                 )
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance
