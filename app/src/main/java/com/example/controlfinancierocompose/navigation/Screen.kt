@@ -2,6 +2,7 @@ package com.example.controlfinancierocompose.navigation
 
 // Enumeración que representa las pantallas de la aplicación
 enum class Screen(val index: Int) {
+    DASHBOARD(0),
     ACCOUNTS(1),
     INVESTMENTS(2),
     CALENDAR(3),

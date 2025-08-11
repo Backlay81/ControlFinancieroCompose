@@ -1,6 +1,5 @@
-package com.example.controlfinancierocompose.ui.auth
+package com.example.controlfinancierocompose.ui.credentials
 
-import android.content.Context
 import android.widget.Toast
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,17 +24,12 @@ import androidx.security.crypto.MasterKeys
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PinUnlockScreen(onUnlock: () -> Unit, onMaxAttempts: () -> Unit) {
+fun CredentialsUnlockScreen(onUnlock: () -> Unit) {
     val context = LocalContext.current
     var pinInput by remember { mutableStateOf("") }
-    var attemptsLeft by remember { mutableStateOf(5) }
     var showError by remember { mutableStateOf(false) }
     var showBiometric by remember { mutableStateOf(false) }
-    var lockCount by remember { mutableStateOf(0) }
-    var isLocked by remember { mutableStateOf(false) }
-    var lockTimeLeft by remember { mutableStateOf(0L) }
-    var showCardDialog by remember { mutableStateOf(false) }
-    val lockDurations = listOf(30L, 60L, 120L) // segundos
+
     val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
     val prefs = EncryptedSharedPreferences.create(
         "secure_prefs",
@@ -45,32 +38,6 @@ fun PinUnlockScreen(onUnlock: () -> Unit, onMaxAttempts: () -> Unit) {
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
-    val prefsEditor = prefs.edit()
-
-    // Recuperar estado persistente
-    LaunchedEffect(Unit) {
-        lockCount = prefs.getInt("lock_count", 0)
-        val unlockAt = prefs.getLong("unlock_at", 0L)
-        val now = System.currentTimeMillis() / 1000L
-        if (unlockAt > now) {
-            isLocked = true
-            lockTimeLeft = unlockAt - now
-        }
-    }
-
-    // Temporizador de desbloqueo
-    LaunchedEffect(isLocked, lockTimeLeft) {
-        if (isLocked && lockTimeLeft > 0) {
-            kotlinx.coroutines.delay(1000L)
-            lockTimeLeft--
-            if (lockTimeLeft <= 0) {
-                isLocked = false
-                attemptsLeft = 5
-                prefsEditor.putLong("unlock_at", 0L).apply()
-            }
-        }
-    }
-
     val correctPin = prefs.getString("user_pin", "") ?: ""
 
     val biometricManager = BiometricManager.from(context)
@@ -110,15 +77,15 @@ fun PinUnlockScreen(onUnlock: () -> Unit, onMaxAttempts: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
-                    imageVector = Icons.Default.VpnKey,
-                    contentDescription = "Acceso seguro",
+                    imageVector = Icons.Default.Fingerprint,
+                    contentDescription = "Acceso credenciales",
                     tint = Color(0xFF1976D2),
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Desbloquea tu app", style = MaterialTheme.typography.titleLarge.copy(color = Color(0xFF1976D2), fontWeight = FontWeight.Bold))
+                Text("Desbloquea tus credenciales", style = MaterialTheme.typography.titleLarge.copy(color = Color(0xFF1976D2), fontWeight = FontWeight.Bold))
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Introduce tu PIN de 8 dígitos o usa tu huella", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF1976D2))
+                Text("Introduce tu PIN de acceso o usa tu huella", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF1976D2))
                 Spacer(modifier = Modifier.height(24.dp))
                 OutlinedTextField(
                     value = pinInput,
@@ -131,64 +98,27 @@ fun PinUnlockScreen(onUnlock: () -> Unit, onMaxAttempts: () -> Unit) {
                         focusedBorderColor = Color(0xFF1976D2),
                         unfocusedBorderColor = Color(0xFF90CAF9)
                     ),
-                    enabled = !isLocked && !showCardDialog,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 if (showError) {
-                    Text("PIN incorrecto. Intentos restantes: $attemptsLeft", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-                if (isLocked) {
-                    Text("Demasiados intentos fallidos. Espera $lockTimeLeft segundos para el siguiente intento.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-                if (showCardDialog) {
-                    Text("Por seguridad, introduce tu tarjeta de coordenadas.", color = Color(0xFF1976D2), style = MaterialTheme.typography.bodyMedium)
-                    // Aquí podrías poner el UI para la tarjeta de coordenadas
+                    Text("PIN incorrecto", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
                 Button(
                     onClick = {
-                        if (showCardDialog) {
-                            // Aquí iría la validación de la tarjeta de coordenadas
+                        if (pinInput == correctPin) {
                             onUnlock()
-                        } else if (pinInput == correctPin) {
-                            onUnlock()
-                            attemptsLeft = 5
-                            lockCount = 0
-                            prefsEditor.putInt("lock_count", 0).apply()
                         } else {
-                            attemptsLeft--
                             showError = true
                             pinInput = ""
-                            if (attemptsLeft <= 0) {
-                                lockCount++
-                                prefsEditor.putInt("lock_count", lockCount).apply()
-                                if (lockCount >= 3) {
-                                    showCardDialog = true
-                                    attemptsLeft = 0
-                                } else {
-                                    val now = System.currentTimeMillis() / 1000L
-                                    val waitTime = lockDurations.getOrElse(lockCount - 1) { 120L }
-                                    prefsEditor.putLong("unlock_at", now + waitTime).apply()
-                                    lockTimeLeft = waitTime
-                                    isLocked = true
-                                    attemptsLeft = 5
-                                }
-                            }
-                            if (lockCount >= 5) {
-                                showCardDialog = true
-                                attemptsLeft = 0
-                            }
                         }
                     },
-                    enabled = attemptsLeft > 0 && !isLocked,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2), contentColor = Color.White)
                 ) {
-                    Text(if (showCardDialog) "Validar tarjeta" else "Desbloquear", style = MaterialTheme.typography.titleMedium)
+                    Text("Desbloquear", style = MaterialTheme.typography.titleMedium)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 if (canAuthenticate) {
@@ -228,28 +158,15 @@ fun PinUnlockScreen(onUnlock: () -> Unit, onMaxAttempts: () -> Unit) {
 }
 
 @Composable
-fun BiometricDialog(context: Context, onSuccess: () -> Unit, onError: () -> Unit) {
+fun BiometricDialog(context: android.content.Context, onSuccess: () -> Unit, onError: () -> Unit) {
     LaunchedEffect(Unit) {
         val executor = ContextCompat.getMainExecutor(context)
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Autenticación biométrica")
-            .setSubtitle("Desbloquea la app con tu huella")
+            .setSubtitle("Desbloquea las credenciales con tu huella")
             .setNegativeButtonText("Cancelar")
             .build()
-        // Obtener la actividad real desde el contexto de Compose
-        fun findFragmentActivity(ctx: Context?): androidx.fragment.app.FragmentActivity? {
-            var current = ctx
-            while (current != null) {
-                if (current is androidx.fragment.app.FragmentActivity) return current
-                if (current is android.content.ContextWrapper) {
-                    current = current.baseContext
-                } else {
-                    break
-                }
-            }
-            return null
-        }
-        val activity = findFragmentActivity(context)
+        val activity = (context as? android.app.Activity) as? androidx.fragment.app.FragmentActivity
         if (activity != null) {
             val biometricPrompt = BiometricPrompt(activity, executor,
                 object : BiometricPrompt.AuthenticationCallback() {
@@ -257,33 +174,14 @@ fun BiometricDialog(context: Context, onSuccess: () -> Unit, onError: () -> Unit
                         onSuccess()
                     }
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        // Mensajes específicos según el código de error
-                        val msg = when (errorCode) {
-                            BiometricPrompt.ERROR_HW_UNAVAILABLE -> "El hardware biométrico no está disponible."
-                            BiometricPrompt.ERROR_UNABLE_TO_PROCESS -> "No se pudo procesar la huella. Intenta de nuevo."
-                            BiometricPrompt.ERROR_TIMEOUT -> "Tiempo de espera agotado."
-                            BiometricPrompt.ERROR_NO_SPACE -> "No hay espacio suficiente para procesar la huella."
-                            BiometricPrompt.ERROR_CANCELED -> "Autenticación cancelada."
-                            BiometricPrompt.ERROR_LOCKOUT -> "Demasiados intentos fallidos. Intenta más tarde."
-                            BiometricPrompt.ERROR_VENDOR -> "Error del sensor biométrico."
-                            BiometricPrompt.ERROR_LOCKOUT_PERMANENT -> "El sensor está bloqueado permanentemente."
-                            BiometricPrompt.ERROR_USER_CANCELED -> "Cancelado por el usuario."
-                            BiometricPrompt.ERROR_NO_BIOMETRICS -> "No hay huellas registradas. Configura una huella en ajustes."
-                            BiometricPrompt.ERROR_HW_NOT_PRESENT -> "No hay hardware biométrico disponible."
-                            BiometricPrompt.ERROR_NEGATIVE_BUTTON -> "Autenticación cancelada."
-                            else -> errString.toString()
-                        }
-                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                         onError()
                     }
                     override fun onAuthenticationFailed() {
-                        Toast.makeText(context, "Huella no reconocida. Intenta de nuevo.", Toast.LENGTH_SHORT).show()
                         onError()
                     }
                 })
             biometricPrompt.authenticate(promptInfo)
         } else {
-            Toast.makeText(context, "No se pudo iniciar la autenticación biométrica. (Contexto de Activity no encontrado)", Toast.LENGTH_LONG).show()
             onError()
         }
     }

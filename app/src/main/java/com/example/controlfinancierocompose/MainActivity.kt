@@ -31,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.controlfinancierocompose.navigation.Screen
@@ -45,6 +47,8 @@ import com.example.controlfinancierocompose.ui.accounts.AccountsScreen
 import com.example.controlfinancierocompose.ui.accounts.AccountsViewModel
 import com.example.controlfinancierocompose.ui.investments.InvestmentsScreen
 import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModel
+import com.example.controlfinancierocompose.ui.dashboard.DashboardScreen
+import com.example.controlfinancierocompose.ui.dashboard.Movimiento
 import com.example.controlfinancierocompose.ui.theme.ControlFinancieroComposeTheme
 
 
@@ -181,6 +185,27 @@ fun MainScreen(
                 .padding(paddingValues)
         ) {
             when (currentScreen) {
+                Screen.DASHBOARD -> {
+                    val banks by accountsViewModel.banks.collectAsState()
+                    val investments by investmentsViewModel.investments.collectAsState()
+                    val cuentas = banks.flatMap { it.accounts }
+                    val saldoTotal = cuentas.sumOf { it.balance } + investments.sumOf { it.amount }
+                    val cuentasTotal = cuentas.sumOf { it.balance }
+                    val inversionesTotal = investments.sumOf { it.amount }
+                    val deudas = cuentas.filter { it.balance < 0 }.sumOf { it.balance }
+                    val movimientos = cuentas.map { Movimiento(it.name, it.balance, "-") } + investments.map { Movimiento(it.name, it.amount, it.date) }
+                    // Puedes ajustar ahorroMensual, gastosMensuales, ingresosMensuales según tu lógica
+                    DashboardScreen(
+                        saldoTotal = saldoTotal,
+                        cuentas = cuentasTotal,
+                        inversiones = inversionesTotal,
+                        deudas = deudas,
+                        ahorroMensual = 0.0,
+                        gastosMensuales = 0.0,
+                        ingresosMensuales = 0.0,
+                        movimientos = movimientos
+                    )
+                }
                 Screen.ACCOUNTS -> {
                     // Cuentas
                     AccountsScreen(
@@ -206,13 +231,34 @@ fun MainScreen(
                     com.example.controlfinancierocompose.ui.calendar.CalendarScreen()
                 }
                 Screen.CREDENTIALS -> {
-                    // Credenciales con filtro de seguridad
-                    com.example.controlfinancierocompose.ui.credentials.CredentialsScreen(
-                        onAccessGranted = {
-                            // Aquí puedes mostrar la pantalla real de credenciales
-                            // Por ahora solo muestra un texto de acceso concedido
-                        }
-                    )
+                    // Credenciales con filtro de seguridad (PIN/huella)
+                    var unlocked by remember { mutableStateOf(false) }
+                    val context = LocalContext.current
+                    if (!unlocked) {
+                        com.example.controlfinancierocompose.ui.credentials.CredentialsUnlockScreen(
+                            onUnlock = { unlocked = true }
+                        )
+                    } else {
+                        val banks by accountsViewModel.banks.collectAsState()
+                        val investmentPlatforms by investmentsViewModel.platforms.collectAsState()
+                        com.example.controlfinancierocompose.ui.credentials.CredentialsListScreen(
+                            banks = banks,
+                            investmentPlatforms = investmentPlatforms,
+                            getAccountsForBank = { bankId -> banks.find { it.id == bankId }?.accounts ?: emptyList() },
+                            getHoldersForAccount = { account -> listOf(account.holder) },
+                            getCredential = { platformId, accountId, holder ->
+                                com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.getCredential(
+                                    context,
+                                    platformId,
+                                    accountId,
+                                    holder
+                                )
+                            },
+                            onSaveCredential = { credential ->
+                                com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.saveCredential(context, credential)
+                            }
+                        )
+                    }
                 }
                 Screen.SETTINGS -> {
                     // Ajustes (por implementar)

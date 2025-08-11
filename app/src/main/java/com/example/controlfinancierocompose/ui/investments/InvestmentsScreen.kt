@@ -110,7 +110,7 @@ fun InvestmentsScreen(
     val platformCount = platforms.size
     val investmentCount = investments.size
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("es", "ES"))
-    var amountsVisible = remember { mutableStateOf(true) }
+    var amountsVisible = remember { mutableStateOf(false) }
     // Estados para el diálogo de añadir plataforma
     val showAddDialog = remember { mutableStateOf(false) }
     val newPlatformName = remember { mutableStateOf("") }
