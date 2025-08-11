@@ -1,5 +1,9 @@
+
 package com.example.controlfinancierocompose.ui.accounts
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Bank(
     val id: Long,
     val name: String,
@@ -7,6 +11,7 @@ data class Bank(
     val isActive: Boolean = true
 )
 
+@Serializable
 data class Account(
     val id: Long,
     val bankId: Long,

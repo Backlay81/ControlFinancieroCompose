@@ -42,6 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import com.example.controlfinancierocompose.navigation.Screen
 import com.example.controlfinancierocompose.ui.accounts.AccountsScreen
 import com.example.controlfinancierocompose.ui.accounts.AccountsViewModel
@@ -50,6 +52,7 @@ import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModel
 import com.example.controlfinancierocompose.ui.dashboard.DashboardScreen
 import com.example.controlfinancierocompose.ui.dashboard.Movimiento
 import com.example.controlfinancierocompose.ui.theme.ControlFinancieroComposeTheme
+import kotlinx.serialization.builtins.serializer
 
 
 class MainActivity : FragmentActivity() {
@@ -194,17 +197,39 @@ fun MainScreen(
                     val inversionesTotal = investments.sumOf { it.amount }
                     val deudas = cuentas.filter { it.balance < 0 }.sumOf { it.balance }
                     val movimientos = cuentas.map { Movimiento(it.name, it.balance, "-") } + investments.map { Movimiento(it.name, it.amount, it.date) }
-                    // Puedes ajustar ahorroMensual, gastosMensuales, ingresosMensuales según tu lógica
-                    DashboardScreen(
-                        saldoTotal = saldoTotal,
-                        cuentas = cuentasTotal,
-                        inversiones = inversionesTotal,
-                        deudas = deudas,
-                        ahorroMensual = 0.0,
-                        gastosMensuales = 0.0,
-                        ingresosMensuales = 0.0,
-                        movimientos = movimientos
-                    )
+                    // TODO: Obtener datos reales de calendario y credenciales
+                    var showQR by remember { mutableStateOf(false) }
+                    var qrJson by remember { mutableStateOf("") }
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        DashboardScreen(
+                            saldoTotal = saldoTotal,
+                            cuentas = cuentasTotal,
+                            inversiones = inversionesTotal,
+                            deudas = deudas,
+                            ahorroMensual = 0.0,
+                            gastosMensuales = 0.0,
+                            ingresosMensuales = 0.0,
+                            movimientos = movimientos,
+                            onSendQR = {
+                                // Recopilar datos y mostrar QR
+                                val exportData = com.example.controlfinancierocompose.ui.dashboard.ExportData(
+                                    banks = banks,
+                                    accounts = cuentas,
+                                    investments = investments, // Pasa la lista completa de entidades
+                                    calendarEvents = emptyList(), // TODO: Obtener eventos reales
+                                    credentials = emptyList() // TODO: Obtener credenciales reales
+                                )
+                                qrJson = Json.encodeToString(com.example.controlfinancierocompose.ui.dashboard.ExportData.serializer(), exportData)
+                                showQR = true
+                            },
+                            onReceiveQR = {
+                                // TODO: Implementar escáner QR
+                            }
+                        )
+                        if (showQR) {
+                            com.example.controlfinancierocompose.ui.dashboard.QRDialog(qrJson) { showQR = false }
+                        }
+                    }
                 }
                 Screen.ACCOUNTS -> {
                     // Cuentas

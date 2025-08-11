@@ -2,8 +2,10 @@ package com.example.controlfinancierocompose.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 import com.example.controlfinancierocompose.data.model.InvestmentType
 
+@Serializable
 @Entity(tableName = "investments")
 data class InvestmentEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

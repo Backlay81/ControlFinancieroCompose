@@ -1,13 +1,13 @@
 package com.example.controlfinancierocompose.ui.credentials
 
+import kotlinx.serialization.Serializable
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import android.content.Context
-import com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.PREFS_NAME
 
 // Modelo para credenciales de acceso por titular
 // Se asocia a cada cuenta/plataforma y titular
-
+@Serializable
 data class Credential(
     val platformId: Long, // banco o plataforma de inversión
     val accountId: Long?, // cuenta bancaria (puede ser null para inversiones)
@@ -18,7 +18,7 @@ data class Credential(
 
 // Utilidad para guardar y recuperar credenciales de forma segura
 object CredentialsStorage {
-    private const val PREFS_NAME = "secure_credentials"
+    const val PREFS_NAME = "secure_credentials"
 
     fun saveCredential(context: Context, credential: Credential) {
         val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)

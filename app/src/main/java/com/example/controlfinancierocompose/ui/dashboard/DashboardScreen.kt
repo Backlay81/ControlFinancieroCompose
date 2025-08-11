@@ -5,22 +5,37 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.MoneyOff
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.example.controlfinancierocompose.data.CalendarEventEntity
+import com.example.controlfinancierocompose.data.InvestmentPlatformEntity
+import com.example.controlfinancierocompose.ui.accounts.Account
+import com.example.controlfinancierocompose.ui.accounts.Bank
+import com.example.controlfinancierocompose.ui.credentials.Credential
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import kotlinx.serialization.Serializable
+import androidx.compose.ui.graphics.Color as ComposeColor
+
+// Modelo de movimiento para el dashboard
+data class Movimiento(val descripcion: String, val cantidad: Double, val fecha: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,9 +52,12 @@ fun DashboardScreen(
         Movimiento("Ingreso nómina", 1500.0, "01/08/2025"),
         Movimiento("Transferencia ahorro", -300.0, "05/08/2025"),
         Movimiento("Pago alquiler", -600.0, "01/08/2025")
-    )
+    ),
+    onSendQR: () -> Unit = {},
+    onReceiveQR: () -> Unit = {}
 ) {
-    val amountsVisible = remember { androidx.compose.runtime.mutableStateOf(false) }
+    val amountsVisible = remember { mutableStateOf(false) }
+    var qrMenuExpanded by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -58,15 +76,44 @@ fun DashboardScreen(
                 color = Color.White,
                 modifier = Modifier.align(Alignment.Center)
             )
-            IconButton(
-                onClick = { amountsVisible.value = !amountsVisible.value },
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp)
+            Row(
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (amountsVisible.value) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                    contentDescription = if (amountsVisible.value) "Ocultar montos" else "Mostrar montos",
-                    tint = Color.White
-                )
+                IconButton(
+                    onClick = { amountsVisible.value = !amountsVisible.value },
+                ) {
+                    Icon(
+                        imageVector = if (amountsVisible.value) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                        contentDescription = if (amountsVisible.value) "Ocultar montos" else "Mostrar montos",
+                        tint = Color.White
+                    )
+                }
+                IconButton(
+                    onClick = { qrMenuExpanded = true },
+                ) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Opciones QR", tint = Color.White)
+                }
+                DropdownMenu(
+                    expanded = qrMenuExpanded,
+                    onDismissRequest = { qrMenuExpanded = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Enviar datos") },
+                        onClick = {
+                            qrMenuExpanded = false
+                            onSendQR()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Recibir datos") },
+                        onClick = {
+                            qrMenuExpanded = false
+                            onReceiveQR()
+                        }
+                    )
+                }
             }
         }
         androidx.compose.foundation.lazy.LazyColumn(
@@ -242,4 +289,54 @@ fun MovimientosList(movimientos: List<Movimiento>) {
     }
 }
 
-data class Movimiento(val descripcion: String, val cantidad: Double, val fecha: String)
+@Serializable
+data class ExportData(
+    val banks: List<Bank>,
+    val accounts: List<Account>,
+    val investments: List<com.example.controlfinancierocompose.data.InvestmentEntity>,
+    val calendarEvents: List<CalendarEventEntity>,
+    val credentials: List<Credential>
+)
+
+@Composable
+fun QRDialog(json: String, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .background(ComposeColor.White, RoundedCornerShape(16.dp))
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Datos para compartir", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(16.dp))
+            QRCodeImage(json, size = 240.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Escanea este código en el otro dispositivo", color = ComposeColor.Gray)
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onDismiss) { Text("Cerrar") }
+        }
+    }
+}
+
+@Composable
+fun QRCodeImage(content: String, size: Dp) {
+    val bitmap = remember(content) { generateQRCodeBitmap(content, size) }
+    androidx.compose.foundation.Image(
+        bitmap = bitmap,
+        contentDescription = "QR",
+        modifier = Modifier.size(size)
+    )
+}
+
+fun generateQRCodeBitmap(content: String, size: Dp): ImageBitmap {
+    val pxSize = size.value.toInt() * 3 // Ajuste para densidad
+    val writer = QRCodeWriter()
+    val bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, pxSize, pxSize)
+    val bitmap = android.graphics.Bitmap.createBitmap(pxSize, pxSize, android.graphics.Bitmap.Config.ARGB_8888)
+    for (x in 0 until pxSize) {
+        for (y in 0 until pxSize) {
+            bitmap.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+        }
+    }
+    return bitmap.asImageBitmap()
+}
