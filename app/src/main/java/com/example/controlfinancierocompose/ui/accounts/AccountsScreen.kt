@@ -220,6 +220,54 @@ fun AccountsScreen(accountsViewModel: AccountsViewModel, onNavigate: (Int) -> Un
                         }
                     }
                 }
+                
+                // Mensaje cuando no hay bancos (ahora después de la tarjeta de resumen)
+                if (sortedBanks.isEmpty()) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 50.dp, bottom = 20.dp, start = 20.dp, end = 20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .background(Color(0xFFE3F2FD), shape = RoundedCornerShape(40.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1976D2),
+                                    modifier = Modifier.size(42.dp)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(20.dp))
+                            
+                            Text(
+                                "Sin bancos",
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1976D2)
+                                )
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                "Añade tu primer banco para comenzar a gestionar tus cuentas",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+                
                 items(sortedBanks) { bank ->
                     var expanded by remember { mutableStateOf(false) }
                     Card(

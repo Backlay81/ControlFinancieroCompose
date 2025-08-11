@@ -149,39 +149,9 @@ class FinancialRepository(
     
     // Función para agregar datos de prueba (útil para depuración)
     suspend fun addSampleData() {
+        // La función queda vacía para no añadir datos de ejemplo
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            // Añadir algunos bancos
-            val bank1Id = bankDao.insertBank(BankEntity(name = "Banco Santander"))
-            val bank2Id = bankDao.insertBank(BankEntity(name = "BBVA"))
-            
-            // Añadir algunas cuentas para el primer banco
-        accountDao.insertAccount(AccountEntity(
-            bankId = bank1Id,
-            holder = "Juan Pérez",
-            name = "Cuenta Corriente",
-            balance = 1500.0,
-            currency = "EUR",
-            type = "Corriente"
-        ))
-        
-        accountDao.insertAccount(AccountEntity(
-            bankId = bank1Id,
-            holder = "Juan Pérez, María López",
-            name = "Cuenta Ahorro",
-            balance = 3500.0,
-            currency = "EUR",
-            type = "Ahorro"
-        ))
-        
-        // Añadir algunas cuentas para el segundo banco
-        accountDao.insertAccount(AccountEntity(
-            bankId = bank2Id,
-            holder = "Juan Pérez",
-            name = "Cuenta Nómina",
-            balance = 2800.0,
-            currency = "EUR",
-            type = "Nómina"
-        ))
+            // No se añaden bancos ni cuentas de ejemplo
         }
     }
 }
