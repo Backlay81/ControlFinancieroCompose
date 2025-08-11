@@ -1,7 +1,7 @@
 package com.example.controlfinancierocompose
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,31 +47,60 @@ import com.example.controlfinancierocompose.ui.investments.InvestmentsScreen
 import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModel
 import com.example.controlfinancierocompose.ui.theme.ControlFinancieroComposeTheme
 
-class MainActivity : ComponentActivity() {
+
+class MainActivity : FragmentActivity() {
     private val accountsViewModel: AccountsViewModel by viewModels {
         val app = application as FinancialControlApplication
         AccountsViewModel.Factory(app.repository)
     }
-    
     private val investmentsViewModel: InvestmentsViewModel by viewModels {
         val app = application as FinancialControlApplication
         InvestmentsViewModel.Factory(app.repository)
     }
-    
+
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Añadir datos de prueba si es necesario
         val app = application as FinancialControlApplication
         app.loadSampleDataIfNeeded()
-        
         enableEdgeToEdge()
         setContent {
             ControlFinancieroComposeTheme {
-                MainScreen(
-                    accountsViewModel = accountsViewModel,
-                    investmentsViewModel = investmentsViewModel
-                )
+                val context = this
+                var pinSet by remember { mutableStateOf(false) }
+                var unlocked by remember { mutableStateOf(false) }
+                var showUnlock by remember { mutableStateOf(false) }
+                // Comprobar si hay PIN guardado
+                LaunchedEffect(Unit) {
+                    val prefs = androidx.security.crypto.EncryptedSharedPreferences.create(
+                        "secure_prefs",
+                        androidx.security.crypto.MasterKeys.getOrCreate(androidx.security.crypto.MasterKeys.AES256_GCM_SPEC),
+                        context,
+                        androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                    )
+                    pinSet = prefs.getString("user_pin", null)?.length == 8
+                    showUnlock = pinSet
+                }
+                // Mostrar pantalla de configuración de PIN si no existe
+                if (!pinSet) {
+                    com.example.controlfinancierocompose.ui.auth.PinSetupScreen(onPinSet = {
+                        pinSet = true
+                        showUnlock = true
+                    })
+                } else if (showUnlock && !unlocked) {
+                    com.example.controlfinancierocompose.ui.auth.PinUnlockScreen(
+                        onUnlock = { unlocked = true },
+                        onMaxAttempts = { /* Aquí podrías mostrar la tarjeta de coordenadas para recuperación */ }
+                    )
+                } else {
+                    MainScreen(
+                        accountsViewModel = accountsViewModel,
+                        investmentsViewModel = investmentsViewModel
+                    )
+                }
+                // Si quieres pedir el PIN al volver del background, deberás gestionar el estado en el ciclo de vida de la actividad (onResume), no con SideEffect ni LaunchedEffect aquí.
             }
         }
     }
@@ -176,12 +206,11 @@ fun MainScreen(
                     com.example.controlfinancierocompose.ui.calendar.CalendarScreen()
                 }
                 Screen.CREDENTIALS -> {
-                    // Credenciales (por implementar)
-                    AccountsScreen(
-                        accountsViewModel = accountsViewModel,
-                        onNavigate = { screenIndex -> 
-                            selectedSection = screenIndex
-                            currentScreen = Screen.fromIndex(screenIndex) 
+                    // Credenciales con filtro de seguridad
+                    com.example.controlfinancierocompose.ui.credentials.CredentialsScreen(
+                        onAccessGranted = {
+                            // Aquí puedes mostrar la pantalla real de credenciales
+                            // Por ahora solo muestra un texto de acceso concedido
                         }
                     )
                 }
