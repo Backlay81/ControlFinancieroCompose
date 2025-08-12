@@ -1,10 +1,13 @@
 package com.example.controlfinancierocompose
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,6 +48,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import com.example.controlfinancierocompose.navigation.Screen
+import com.example.controlfinancierocompose.ui.scanner.QRScannerActivity
+import com.example.controlfinancierocompose.ui.dashboard.ExportData
+import androidx.activity.viewModels
 import com.example.controlfinancierocompose.ui.accounts.AccountsScreen
 import com.example.controlfinancierocompose.ui.accounts.AccountsViewModel
 import com.example.controlfinancierocompose.ui.investments.InvestmentsScreen
@@ -56,16 +62,88 @@ import kotlinx.serialization.builtins.serializer
 
 
 class MainActivity : FragmentActivity() {
+    
     private val accountsViewModel: AccountsViewModel by viewModels {
         val app = application as FinancialControlApplication
         AccountsViewModel.Factory(app.repository)
     }
+    
     private val investmentsViewModel: InvestmentsViewModel by viewModels {
         val app = application as FinancialControlApplication
         InvestmentsViewModel.Factory(app.repository)
     }
-
-
+    
+    // Definición del importador de datos
+    private fun importDataFromQR(exportData: ExportData) {
+        // Importar bancos y cuentas
+        exportData.banks.forEach { bank ->
+            // Verificar si el banco ya existe por nombre
+            val existingBankWithSameName = accountsViewModel.banks.value.find { it.name == bank.name }
+            
+            if (existingBankWithSameName == null) {
+                // Si no existe, añadir el banco
+                accountsViewModel.addBank(bank)
+            } else {
+                // Si existe, actualizar el banco y sus cuentas
+                accountsViewModel.updateBank(bank.copy(id = existingBankWithSameName.id))
+                
+                // Procesar las cuentas del banco
+                bank.accounts.forEach { account ->
+                    val existingAccount = existingBankWithSameName.accounts.find { it.name == account.name }
+                    
+                    if (existingAccount == null) {
+                        // Si la cuenta no existe, añadirla
+                        accountsViewModel.addAccount(existingBankWithSameName.id, 
+                            account.copy(bankId = existingBankWithSameName.id))
+                    } else {
+                        // Si existe, actualizarla
+                        accountsViewModel.updateAccount(existingBankWithSameName.id, 
+                            account.copy(id = existingAccount.id, bankId = existingBankWithSameName.id))
+                    }
+                }
+            }
+        }
+        
+        // Importar inversiones
+        exportData.investments.forEach { investment ->
+            // Verificar si la inversión ya existe por nombre
+            val existingInvestment = investmentsViewModel.investments.value.find { it.name == investment.name }
+            
+            if (existingInvestment == null) {
+                // Si no existe, añadirla
+                investmentsViewModel.addInvestment(investment)
+            } else {
+                // Si existe, actualizarla
+                investmentsViewModel.updateInvestment(investment.copy(id = existingInvestment.id))
+            }
+        }
+        
+        // Aquí podrías procesar también calendarEvents y credentials cuando se implementen
+    }
+    
+    // Scanner para QR
+    private val scanQrLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val scanResult = result.data?.getStringExtra("SCAN_RESULT")
+            if (scanResult != null) {
+                try {
+                    // Decodificar los datos JSON
+                    val exportData = Json.decodeFromString(ExportData.serializer(), scanResult)
+                    
+                    // Procesar los datos recibidos
+                    importDataFromQR(exportData)
+                    
+                    // Mostrar mensaje de éxito
+                    Toast.makeText(this, "Datos importados correctamente", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    // Error al procesar los datos
+                    Toast.makeText(this, "Error al procesar los datos: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,7 +182,11 @@ class MainActivity : FragmentActivity() {
                 } else {
                     MainScreen(
                         accountsViewModel = accountsViewModel,
-                        investmentsViewModel = investmentsViewModel
+                        investmentsViewModel = investmentsViewModel,
+                        onReceiveQR = { 
+                            val intent = Intent(context, QRScannerActivity::class.java)
+                            scanQrLauncher.launch(intent)
+                        }
                     )
                 }
                 // Si quieres pedir el PIN al volver del background, deberás gestionar el estado en el ciclo de vida de la actividad (onResume), no con SideEffect ni LaunchedEffect aquí.
@@ -113,189 +195,4 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-@Composable
-fun MainScreen(
-    accountsViewModel: AccountsViewModel,
-    investmentsViewModel: InvestmentsViewModel
-) {
-    var currentScreen by remember { mutableStateOf(Screen.ACCOUNTS) } // Por defecto mostramos la pantalla de cuentas
-    var selectedSection by remember { mutableStateOf(currentScreen.index) }
-    
-    Scaffold(
-        bottomBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(vertical = 4.dp)
-                    .navigationBarsPadding(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                val items = listOf(
-                    Triple("Dashboard", Icons.Filled.Home, "Dashboard"),
-                    Triple("Cuentas", Icons.Filled.AccountCircle, "Cuentas"),
-                    Triple("Inversiones", Icons.Filled.TrendingUp, "Inversiones"),
-                    Triple("Calendario", Icons.Filled.CalendarToday, "Calendario"),
-                    Triple("Credenciales", Icons.Filled.VpnKey, "Credenciales")
-                )
-                items.forEachIndexed { index, item ->
-                    val selected = selectedSection == index
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { 
-                                selectedSection = index
-                                currentScreen = Screen.fromIndex(index)
-                            }
-                            .padding(vertical = 2.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            item.second,
-                            contentDescription = item.first,
-                            modifier = Modifier
-                                .size(if (selected) 32.dp else 28.dp)
-                                .padding(bottom = 2.dp),
-                            tint = if (selected) Color(0xFF1976D2) else Color(0xFF757575)
-                        )
-                        Text(
-                            item.third,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = if (selected) Color(0xFF1976D2) else Color(0xFF757575),
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                            ),
-                            maxLines = 1
-                        )
-                        if (selected) {
-                            Box(
-                                modifier = Modifier
-                                    .height(3.dp)
-                                    .width(32.dp)
-                                    .background(
-                                        color = Color(0xFF1976D2),
-                                        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
-                                    )
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (currentScreen) {
-                Screen.DASHBOARD -> {
-                    val banks by accountsViewModel.banks.collectAsState()
-                    val investments by investmentsViewModel.investments.collectAsState()
-                    val cuentas = banks.flatMap { it.accounts }
-                    val saldoTotal = cuentas.sumOf { it.balance } + investments.sumOf { it.amount }
-                    val cuentasTotal = cuentas.sumOf { it.balance }
-                    val inversionesTotal = investments.sumOf { it.amount }
-                    val deudas = cuentas.filter { it.balance < 0 }.sumOf { it.balance }
-                    val movimientos = cuentas.map { Movimiento(it.name, it.balance, "-") } + investments.map { Movimiento(it.name, it.amount, it.date) }
-                    // TODO: Obtener datos reales de calendario y credenciales
-                    var showQR by remember { mutableStateOf(false) }
-                    var qrJson by remember { mutableStateOf("") }
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        DashboardScreen(
-                            saldoTotal = saldoTotal,
-                            cuentas = cuentasTotal,
-                            inversiones = inversionesTotal,
-                            deudas = deudas,
-                            ahorroMensual = 0.0,
-                            gastosMensuales = 0.0,
-                            ingresosMensuales = 0.0,
-                            movimientos = movimientos,
-                            onSendQR = {
-                                // Recopilar datos y mostrar QR
-                                val exportData = com.example.controlfinancierocompose.ui.dashboard.ExportData(
-                                    banks = banks,
-                                    accounts = cuentas,
-                                    investments = investments, // Pasa la lista completa de entidades
-                                    calendarEvents = emptyList(), // TODO: Obtener eventos reales
-                                    credentials = emptyList() // TODO: Obtener credenciales reales
-                                )
-                                qrJson = Json.encodeToString(com.example.controlfinancierocompose.ui.dashboard.ExportData.serializer(), exportData)
-                                showQR = true
-                            },
-                            onReceiveQR = {
-                                // TODO: Implementar escáner QR
-                            }
-                        )
-                        if (showQR) {
-                            com.example.controlfinancierocompose.ui.dashboard.QRDialog(qrJson) { showQR = false }
-                        }
-                    }
-                }
-                Screen.ACCOUNTS -> {
-                    // Cuentas
-                    AccountsScreen(
-                        accountsViewModel = accountsViewModel,
-                        onNavigate = { screenIndex -> 
-                            selectedSection = screenIndex
-                            currentScreen = Screen.fromIndex(screenIndex) 
-                        }
-                    )
-                }
-                Screen.INVESTMENTS -> {
-                    // Inversiones
-                    InvestmentsScreen(
-                        viewModel = investmentsViewModel,
-                        onNavigate = { screenIndex -> 
-                            selectedSection = screenIndex
-                            currentScreen = Screen.fromIndex(screenIndex) 
-                        }
-                    )
-                }
-                Screen.CALENDAR -> {
-                    // Calendario
-                    com.example.controlfinancierocompose.ui.calendar.CalendarScreen()
-                }
-                Screen.CREDENTIALS -> {
-                    // Credenciales con filtro de seguridad (PIN/huella)
-                    var unlocked by remember { mutableStateOf(false) }
-                    val context = LocalContext.current
-                    if (!unlocked) {
-                        com.example.controlfinancierocompose.ui.credentials.CredentialsUnlockScreen(
-                            onUnlock = { unlocked = true }
-                        )
-                    } else {
-                        val banks by accountsViewModel.banks.collectAsState()
-                        val investmentPlatforms by investmentsViewModel.platforms.collectAsState()
-                        com.example.controlfinancierocompose.ui.credentials.CredentialsListScreen(
-                            banks = banks,
-                            investmentPlatforms = investmentPlatforms,
-                            getAccountsForBank = { bankId -> banks.find { it.id == bankId }?.accounts ?: emptyList() },
-                            getHoldersForAccount = { account -> listOf(account.holder) },
-                            getCredential = { platformId, accountId, holder ->
-                                com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.getCredential(
-                                    context,
-                                    platformId,
-                                    accountId,
-                                    holder
-                                )
-                            },
-                            onSaveCredential = { credential ->
-                                com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.saveCredential(context, credential)
-                            }
-                        )
-                    }
-                }
-                Screen.SETTINGS -> {
-                    // Ajustes (por implementar)
-                    AccountsScreen(
-                        accountsViewModel = accountsViewModel,
-                        onNavigate = { screenIndex -> 
-                            selectedSection = screenIndex
-                            currentScreen = Screen.fromIndex(screenIndex) 
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
+
