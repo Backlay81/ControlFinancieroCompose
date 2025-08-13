@@ -80,7 +80,8 @@ import java.util.Locale
 fun AccountsScreen(accountsViewModel: AccountsViewModel, onNavigate: (Int) -> Unit = {}) {
     val banks by accountsViewModel.banks.collectAsState()
     // Ordenar bancos: activos primero, inactivos al final
-    val sortedBanks = banks.sortedBy { it.isActive.not() }
+    val sortedBanks = banks.sortedWith(compareBy<Bank> { it.isActive.not() }
+        .thenByDescending { it.accounts.sumOf { acc -> acc.balance } })
     val amountsVisible = remember { mutableStateOf(false) }
     val totalBalance = banks.flatMap { it.accounts }.sumOf { it.balance }
     val accountCount = banks.sumOf { it.accounts.size }
