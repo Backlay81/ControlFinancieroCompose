@@ -10,6 +10,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class FinancialControlApplication : Application() {
+    // Expose CalendarEventRepository
+    val calendarEventRepository: com.example.controlfinancierocompose.data.CalendarEventRepository? by lazy {
+        try {
+            val db = com.example.controlfinancierocompose.data.AppDatabase.getDatabase(this)
+            com.example.controlfinancierocompose.data.CalendarEventRepository(db.calendarEventDao())
+        } catch (_: Exception) { null }
+    }
     // Lazy initialization of the repository
     val repository: FinancialRepository by lazy {
         AppContainer.provideFinancialRepository(this)

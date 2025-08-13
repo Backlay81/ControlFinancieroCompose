@@ -11,6 +11,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class InvestmentsViewModel(private val repository: FinancialRepository) : ViewModel() {
+    fun refresh() {
+        viewModelScope.launch {
+            loadPlatforms()
+            loadAllInvestments()
+        }
+    }
     private val _platforms = MutableStateFlow<List<InvestmentPlatformEntity>>(emptyList())
     val platforms: StateFlow<List<InvestmentPlatformEntity>> = _platforms
 

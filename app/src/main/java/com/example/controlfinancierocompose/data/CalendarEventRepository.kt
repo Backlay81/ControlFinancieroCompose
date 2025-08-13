@@ -9,4 +9,7 @@ class CalendarEventRepository(
     suspend fun insertEvent(event: CalendarEventEntity) = dao.insertEvent(event)
     suspend fun updateEvent(event: CalendarEventEntity) = dao.updateEvent(event)
     suspend fun deleteEvent(event: CalendarEventEntity) = dao.deleteEvent(event)
+    suspend fun getAllEventsList(): List<CalendarEventEntity> {
+        return dao.getAllEventsList()
+    }
 }

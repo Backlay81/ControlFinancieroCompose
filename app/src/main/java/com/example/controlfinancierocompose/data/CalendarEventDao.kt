@@ -5,6 +5,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CalendarEventDao {
+    @Query("SELECT * FROM calendar_events")
+    suspend fun getAllEventsList(): List<CalendarEventEntity>
+    @Query("DELETE FROM calendar_events")
+    suspend fun deleteAllEvents()
     @Query("SELECT * FROM calendar_events WHERE date = :date")
     fun getEventsForDate(date: String): Flow<List<CalendarEventEntity>>
 

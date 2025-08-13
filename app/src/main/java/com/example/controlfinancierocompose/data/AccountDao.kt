@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AccountDao {
+    @Query("DELETE FROM accounts")
+    suspend fun deleteAllAccounts()
     @Query("SELECT * FROM accounts ORDER BY name ASC")
     fun getAllAccounts(): Flow<List<AccountEntity>>
     

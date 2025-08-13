@@ -293,12 +293,13 @@ fun CredentialsListScreen(
                                 }
                                 
                                 val holder = "Titular"
-                                // Estado para controlar la expansión del titular
                                 var expanded by remember { mutableStateOf(false) }
-                                // Estado para controlar si se muestra la contraseña
                                 var showPassword by remember { mutableStateOf(false) }
                                 val credential = getCredential(platform.id, null, holder)
-                                
+                                // Estado local para username y password (igual que en bancos)
+                                var username by remember(platform.id, holder) { mutableStateOf(credential?.username ?: "") }
+                                var password by remember(platform.id, holder) { mutableStateOf(if (credential?.password == null || credential.password == "null") "" else credential.password) }
+
                                 ElevatedCard(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -331,15 +332,12 @@ fun CredentialsListScreen(
                                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
                                                 )
                                             }
-                                            // Icono para indicar expansión
                                             Icon(
                                                 if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                                 contentDescription = if (expanded) "Contraer" else "Expandir",
                                                 tint = Color(0xFF388E3C)
                                             )
                                         }
-                                        
-                                        // Contenido expandible
                                         if (expanded) {
                                             Spacer(modifier = Modifier.height(12.dp))
                                             Row(
@@ -357,9 +355,10 @@ fun CredentialsListScreen(
                                                 )
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 TextField(
-                                                    value = credential?.username ?: "",
+                                                    value = username,
                                                     onValueChange = { newUser ->
-                                                        onSaveCredential(Credential(platform.id, null, holder, newUser, credential?.password))
+                                                        username = newUser
+                                                        onSaveCredential(Credential(platform.id, null, holder, newUser, password))
                                                     },
                                                     placeholder = { Text("Usuario") },
                                                     singleLine = true,
@@ -372,9 +371,7 @@ fun CredentialsListScreen(
                                                     modifier = Modifier.weight(1f)
                                                 )
                                             }
-                                            
                                             Spacer(modifier = Modifier.height(8.dp))
-                                            
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
@@ -390,9 +387,10 @@ fun CredentialsListScreen(
                                                 )
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 TextField(
-                                                    value = credential?.password ?: "",
+                                                    value = password,
                                                     onValueChange = { newPass ->
-                                                        onSaveCredential(Credential(platform.id, null, holder, credential?.username, newPass))
+                                                        password = newPass
+                                                        onSaveCredential(Credential(platform.id, null, holder, username, newPass))
                                                     },
                                                     placeholder = { Text("Contraseña") },
                                                     singleLine = true,

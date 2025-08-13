@@ -4,61 +4,24 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.VpnKey
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
-import com.example.controlfinancierocompose.navigation.Screen
-import com.example.controlfinancierocompose.ui.scanner.QRScannerActivity
-import com.example.controlfinancierocompose.ui.dashboard.ExportData
-import androidx.activity.viewModels
-import com.example.controlfinancierocompose.ui.accounts.AccountsScreen
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
 import com.example.controlfinancierocompose.ui.accounts.AccountsViewModel
-import com.example.controlfinancierocompose.ui.investments.InvestmentsScreen
+import com.example.controlfinancierocompose.ui.dashboard.ExportData
 import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModel
-import com.example.controlfinancierocompose.ui.dashboard.DashboardScreen
-import com.example.controlfinancierocompose.ui.dashboard.Movimiento
+import com.example.controlfinancierocompose.ui.scanner.QRScannerActivity
 import com.example.controlfinancierocompose.ui.theme.ControlFinancieroComposeTheme
-import kotlinx.serialization.builtins.serializer
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 
 
 class MainActivity : FragmentActivity() {
@@ -75,50 +38,49 @@ class MainActivity : FragmentActivity() {
     
     // Definición del importador de datos
     private fun importDataFromQR(exportData: ExportData) {
-        // Importar bancos y cuentas
-        exportData.banks.forEach { bank ->
-            // Verificar si el banco ya existe por nombre
-            val existingBankWithSameName = accountsViewModel.banks.value.find { it.name == bank.name }
-            
-            if (existingBankWithSameName == null) {
-                // Si no existe, añadir el banco
-                accountsViewModel.addBank(bank)
-            } else {
-                // Si existe, actualizar el banco y sus cuentas
-                accountsViewModel.updateBank(bank.copy(id = existingBankWithSameName.id))
-                
-                // Procesar las cuentas del banco
+        lifecycleScope.launch {
+            val app = application as FinancialControlApplication
+            val repository = app.repository
+            // Borrar todo
+            repository.deleteAllInvestments()
+            repository.deleteAllPlatforms()
+            repository.deleteAllAccounts()
+            repository.deleteAllBanks()
+            repository.deleteAllCalendarEvents()
+            // Borrar credenciales (sobrescribir todo)
+            com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.saveAllCredentials(this@MainActivity, emptyList())
+
+            // Importar bancos y cuentas
+            exportData.banks.forEach { bank ->
+                repository.insertBank(bank)
                 bank.accounts.forEach { account ->
-                    val existingAccount = existingBankWithSameName.accounts.find { it.name == account.name }
-                    
-                    if (existingAccount == null) {
-                        // Si la cuenta no existe, añadirla
-                        accountsViewModel.addAccount(existingBankWithSameName.id, 
-                            account.copy(bankId = existingBankWithSameName.id))
-                    } else {
-                        // Si existe, actualizarla
-                        accountsViewModel.updateAccount(existingBankWithSameName.id, 
-                            account.copy(id = existingAccount.id, bankId = existingBankWithSameName.id))
-                    }
+                    repository.insertAccount(account)
                 }
             }
-        }
-        
-        // Importar inversiones
-        exportData.investments.forEach { investment ->
-            // Verificar si la inversión ya existe por nombre
-            val existingInvestment = investmentsViewModel.investments.value.find { it.name == investment.name }
-            
-            if (existingInvestment == null) {
-                // Si no existe, añadirla
-                investmentsViewModel.addInvestment(investment)
-            } else {
-                // Si existe, actualizarla
-                investmentsViewModel.updateInvestment(investment.copy(id = existingInvestment.id))
+
+            // Importar plataformas de inversión
+            exportData.investmentPlatforms.forEach { platform ->
+                repository.insertPlatform(platform)
             }
+
+            // Importar inversiones
+            exportData.investments.forEach { investment ->
+                repository.insertInvestment(investment)
+            }
+
+            // Importar eventos de calendario
+            val calendarEventRepo = app.calendarEventRepository
+            exportData.calendarEvents.forEach { event ->
+                calendarEventRepo?.insertEvent(event)
+            }
+
+            // Importar credenciales
+            com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.saveAllCredentials(this@MainActivity, exportData.credentials)
+
+            // Refrescar los ViewModels para que la UI muestre los datos correctos
+            accountsViewModel.refresh()
+            investmentsViewModel.refresh()
         }
-        
-        // Aquí podrías procesar también calendarEvents y credentials cuando se implementen
     }
     
     // Scanner para QR
@@ -156,7 +118,6 @@ class MainActivity : FragmentActivity() {
                 var pinSet by remember { mutableStateOf(false) }
                 var unlocked by remember { mutableStateOf(false) }
                 var showUnlock by remember { mutableStateOf(false) }
-                // Comprobar si hay PIN guardado
                 LaunchedEffect(Unit) {
                     val prefs = androidx.security.crypto.EncryptedSharedPreferences.create(
                         "secure_prefs",
@@ -168,7 +129,8 @@ class MainActivity : FragmentActivity() {
                     pinSet = prefs.getString("user_pin", null)?.length == 8
                     showUnlock = pinSet
                 }
-                // Mostrar pantalla de configuración de PIN si no existe
+                val app = application as FinancialControlApplication
+                val calendarEventRepository = app.calendarEventRepository
                 if (!pinSet) {
                     com.example.controlfinancierocompose.ui.auth.PinSetupScreen(onPinSet = {
                         pinSet = true
@@ -183,13 +145,13 @@ class MainActivity : FragmentActivity() {
                     MainScreen(
                         accountsViewModel = accountsViewModel,
                         investmentsViewModel = investmentsViewModel,
+                        calendarEventRepository = calendarEventRepository,
                         onReceiveQR = { 
                             val intent = Intent(context, QRScannerActivity::class.java)
                             scanQrLauncher.launch(intent)
                         }
                     )
                 }
-                // Si quieres pedir el PIN al volver del background, deberás gestionar el estado en el ciclo de vida de la actividad (onResume), no con SideEffect ni LaunchedEffect aquí.
             }
         }
     }

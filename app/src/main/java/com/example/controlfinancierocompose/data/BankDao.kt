@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BankDao {
+    @Query("DELETE FROM banks")
+    suspend fun deleteAllBanks()
     @Query("SELECT * FROM banks ORDER BY name ASC")
     fun getAllBanks(): Flow<List<BankEntity>>
     

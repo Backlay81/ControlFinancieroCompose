@@ -18,6 +18,48 @@ data class Credential(
 
 // Utilidad para guardar y recuperar credenciales de forma segura
 object CredentialsStorage {
+    // Obtiene todas las credenciales guardadas como lista serializable
+    fun getAllCredentials(context: Context): List<Credential> {
+        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        val prefs = EncryptedSharedPreferences.create(
+            PREFS_NAME,
+            masterKeyAlias,
+            context,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+        val credentials = mutableListOf<Credential>()
+        for ((key, value) in prefs.all) {
+            if (value is String) {
+                val parts = value.split("|")
+                // Key format: platformId_accountId_holder
+                val keyParts = key.split("_")
+                val platformId = keyParts.getOrNull(0)?.toLongOrNull() ?: continue
+                val accountId = keyParts.getOrNull(1)?.let { if (it == "none") null else it.toLongOrNull() }
+                val holder = keyParts.getOrNull(2) ?: continue
+                credentials.add(Credential(platformId, accountId, holder, parts.getOrNull(0), parts.getOrNull(1)))
+            }
+        }
+        return credentials
+    }
+
+    // Guarda una lista de credenciales (sobrescribe las existentes con la misma clave)
+    fun saveAllCredentials(context: Context, credentials: List<Credential>) {
+        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        val prefs = EncryptedSharedPreferences.create(
+            PREFS_NAME,
+            masterKeyAlias,
+            context,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+        val editor = prefs.edit()
+        for (credential in credentials) {
+            val key = credentialKey(credential)
+            editor.putString(key, "${credential.username}|${credential.password}")
+        }
+        editor.apply()
+    }
     const val PREFS_NAME = "secure_credentials"
 
     fun saveCredential(context: Context, credential: Credential) {

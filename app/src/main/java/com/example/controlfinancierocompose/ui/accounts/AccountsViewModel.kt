@@ -6,10 +6,18 @@ import androidx.lifecycle.viewModelScope
 import com.example.controlfinancierocompose.data.FinancialRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class AccountsViewModel(private val repository: FinancialRepository) : ViewModel() {
+
+    fun refresh() {
+        viewModelScope.launch {
+            // Forzar recarga de bancos (el StateFlow ya está conectado, pero esto fuerza la actualización)
+            repository.allBanks.first()
+        }
+    }
     val banks: StateFlow<List<Bank>> = repository.allBanks
         .stateIn(
             scope = viewModelScope,

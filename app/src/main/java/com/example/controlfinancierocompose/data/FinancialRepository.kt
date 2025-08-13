@@ -13,6 +13,27 @@ class FinancialRepository(
     private val platformDao: PlatformDao,
     private val investmentDao: InvestmentDao
 ) {
+
+    suspend fun deleteAllBanks() {
+        bankDao.deleteAllBanks()
+    }
+
+    suspend fun deleteAllAccounts() {
+        accountDao.deleteAllAccounts()
+    }
+
+    suspend fun deleteAllPlatforms() {
+        platformDao.deleteAllPlatforms()
+    }
+
+    suspend fun deleteAllInvestments() {
+        investmentDao.deleteAllInvestments()
+    }
+
+    suspend fun deleteAllCalendarEvents() {
+        // Si tienes un calendarEventDao, llama aquí
+        // calendarEventDao.deleteAllEvents()
+    }
     // Bank operations
     // Combinamos los flujos de bancos y cuentas
     val allBanks: Flow<List<Bank>> = kotlinx.coroutines.flow.combine(

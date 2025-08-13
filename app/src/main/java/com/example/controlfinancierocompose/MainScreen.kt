@@ -44,11 +44,13 @@ import com.example.controlfinancierocompose.ui.dashboard.Movimiento
 import com.example.controlfinancierocompose.ui.investments.InvestmentsScreen
 import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModel
 import kotlinx.serialization.json.Json
+import com.example.controlfinancierocompose.data.CalendarEventRepository
 
 @Composable
 fun MainScreen(
     accountsViewModel: AccountsViewModel,
     investmentsViewModel: InvestmentsViewModel,
+    calendarEventRepository: CalendarEventRepository?,
     onReceiveQR: () -> Unit
 ) {
     var currentScreen by remember { mutableStateOf(Screen.ACCOUNTS) } // Por defecto mostramos la pantalla de cuentas
@@ -130,9 +132,12 @@ fun MainScreen(
                     val inversionesTotal = investments.sumOf { it.amount }
                     val deudas = cuentas.filter { it.balance < 0 }.sumOf { it.balance }
                     val movimientos = cuentas.map { Movimiento(it.name, it.balance, "-") } + investments.map { Movimiento(it.name, it.amount, it.date) }
-                    // TODO: Obtener datos reales de calendario y credenciales
+                    val context = LocalContext.current
+                    val calendarEventsState = remember { mutableStateOf<List<com.example.controlfinancierocompose.data.CalendarEventEntity>>(emptyList()) }
+                    val credentialsState = remember { mutableStateOf<List<com.example.controlfinancierocompose.ui.credentials.Credential>>(emptyList()) }
                     var showQR by remember { mutableStateOf(false) }
                     var qrJson by remember { mutableStateOf("") }
+                    // Cargar eventos y credenciales solo cuando se pulse exportar
                     Box(modifier = Modifier.fillMaxSize()) {
                         DashboardScreen(
                             saldoTotal = saldoTotal,
@@ -145,12 +150,23 @@ fun MainScreen(
                             movimientos = movimientos,
                             onSendQR = {
                                 // Recopilar datos y mostrar QR
+                                val calendarEvents = try {
+                                    calendarEventRepository?.let { repo ->
+                                        kotlinx.coroutines.runBlocking { repo.getAllEventsList() }
+                                    } ?: emptyList()
+                                } catch (_: Exception) { emptyList() }
+                                val credentials = try {
+                                    com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.getAllCredentials(context)
+                                } catch (_: Exception) { emptyList() }
+                                calendarEventsState.value = calendarEvents
+                                credentialsState.value = credentials
                                 val exportData = com.example.controlfinancierocompose.ui.dashboard.ExportData(
                                     banks = banks,
                                     accounts = cuentas,
-                                    investments = investments, // Pasa la lista completa de entidades
-                                    calendarEvents = emptyList(), // TODO: Obtener eventos reales
-                                    credentials = emptyList() // TODO: Obtener credenciales reales
+                                    investmentPlatforms = investmentsViewModel.platforms.value,
+                                    investments = investments,
+                                    calendarEvents = calendarEvents,
+                                    credentials = credentials
                                 )
                                 qrJson = Json.encodeToString(com.example.controlfinancierocompose.ui.dashboard.ExportData.serializer(), exportData)
                                 showQR = true

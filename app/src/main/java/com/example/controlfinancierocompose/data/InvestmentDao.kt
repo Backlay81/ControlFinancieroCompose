@@ -4,6 +4,8 @@ import androidx.room.*
 
 @Dao
 interface InvestmentDao {
+    @Query("DELETE FROM investments")
+    suspend fun deleteAllInvestments()
     @Query("SELECT * FROM investments WHERE platformId = :platformId")
     suspend fun getInvestmentsForPlatform(platformId: Long): List<InvestmentEntity>
 
