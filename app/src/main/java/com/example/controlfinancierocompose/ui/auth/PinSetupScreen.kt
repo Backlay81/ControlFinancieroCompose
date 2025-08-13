@@ -44,16 +44,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 import java.text.SimpleDateFormat
 import java.util.Date
 import kotlin.random.Random
 
 // Helper para capturar el bitmap de la vista actual
 fun getBitmapFromView(view: android.view.View): android.graphics.Bitmap {
-    view.isDrawingCacheEnabled = true
-    val bitmap = android.graphics.Bitmap.createBitmap(view.drawingCache)
-    view.isDrawingCacheEnabled = false
+    // Método moderno para crear un bitmap a partir de una vista
+    val bitmap = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    view.draw(canvas)
     return bitmap
 }
 
@@ -68,11 +69,13 @@ fun PinSetupScreen(onPinSet: () -> Unit) {
     var card by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
 
     fun savePinAndCard(pin: String, card: List<Pair<String, String>>) {
-        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
         val prefs = EncryptedSharedPreferences.create(
-            "secure_prefs",
-            masterKeyAlias,
             context,
+            "secure_prefs",
+            masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )

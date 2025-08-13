@@ -1,6 +1,5 @@
 package com.example.controlfinancierocompose
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -18,7 +17,6 @@ import androidx.lifecycle.lifecycleScope
 import com.example.controlfinancierocompose.ui.accounts.AccountsViewModel
 import com.example.controlfinancierocompose.ui.dashboard.ExportData
 import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModel
-import com.example.controlfinancierocompose.ui.scanner.QRScannerActivity
 import com.example.controlfinancierocompose.ui.theme.ControlFinancieroComposeTheme
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -87,7 +85,7 @@ class MainActivity : FragmentActivity() {
     private val scanQrLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        if (result.resultCode == RESULT_OK) {
             val scanResult = result.data?.getStringExtra("SCAN_RESULT")
             if (scanResult != null) {
                 try {
@@ -119,10 +117,13 @@ class MainActivity : FragmentActivity() {
                 var unlocked by remember { mutableStateOf(false) }
                 var showUnlock by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) {
+                    val masterKey = androidx.security.crypto.MasterKey.Builder(context)
+                        .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
+                        .build()
                     val prefs = androidx.security.crypto.EncryptedSharedPreferences.create(
-                        "secure_prefs",
-                        androidx.security.crypto.MasterKeys.getOrCreate(androidx.security.crypto.MasterKeys.AES256_GCM_SPEC),
                         context,
+                        "secure_prefs",
+                        masterKey,
                         androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                         androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                     )
@@ -147,7 +148,7 @@ class MainActivity : FragmentActivity() {
                         investmentsViewModel = investmentsViewModel,
                         calendarEventRepository = calendarEventRepository,
                         onReceiveQR = { 
-                            val intent = Intent(context, QRScannerActivity::class.java)
+                            val intent = Intent(context, com.example.controlfinancierocompose.ui.scanner.CodeScannerActivity::class.java)
                             scanQrLauncher.launch(intent)
                         }
                     )

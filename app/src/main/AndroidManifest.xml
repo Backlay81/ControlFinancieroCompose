@@ -30,9 +30,9 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.scanner.QRScannerActivity"
+            android:name=".ui.scanner.CodeScannerActivity"
             android:exported="false"
-            android:theme="@style/Theme.ControlFinancieroCompose" />
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
     </application>
 
 </manifest>

@@ -26,7 +26,7 @@ fun CredentialsScreen(onAccessGranted: () -> Unit) {
 
     // Biometric check
     val biometricManager = BiometricManager.from(context)
-    val canAuthenticate = biometricManager.canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS
+    val canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
 
     LaunchedEffect(accessGranted) {
         if (accessGranted) onAccessGranted()

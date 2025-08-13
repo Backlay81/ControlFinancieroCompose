@@ -18,7 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +53,7 @@ fun MainScreen(
     calendarEventRepository: CalendarEventRepository?,
     onReceiveQR: () -> Unit
 ) {
-    var currentScreen by remember { mutableStateOf(Screen.ACCOUNTS) } // Por defecto mostramos la pantalla de cuentas
+    var currentScreen by remember { mutableStateOf(Screen.DASHBOARD) } // Ahora mostramos el dashboard por defecto
     var selectedSection by remember { mutableStateOf(currentScreen.index) }
     
     Scaffold(
@@ -69,7 +69,7 @@ fun MainScreen(
                 val items = listOf(
                     Triple("Dashboard", Icons.Filled.Home, "Dashboard"),
                     Triple("Cuentas", Icons.Filled.AccountCircle, "Cuentas"),
-                    Triple("Inversiones", Icons.Filled.TrendingUp, "Inversiones"),
+                    Triple("Inversiones", Icons.AutoMirrored.Filled.TrendingUp, "Inversiones"),
                     Triple("Calendario", Icons.Filled.CalendarToday, "Calendario"),
                     Triple("Credenciales", Icons.Filled.VpnKey, "Credenciales")
                 )
@@ -130,7 +130,6 @@ fun MainScreen(
                     val saldoTotal = cuentas.sumOf { it.balance } + investments.sumOf { it.amount }
                     val cuentasTotal = cuentas.sumOf { it.balance }
                     val inversionesTotal = investments.sumOf { it.amount }
-                    val deudas = cuentas.filter { it.balance < 0 }.sumOf { it.balance }
                     val movimientos = cuentas.map { Movimiento(it.name, it.balance, "-") } + investments.map { Movimiento(it.name, it.amount, it.date) }
                     val context = LocalContext.current
                     val calendarEventsState = remember { mutableStateOf<List<com.example.controlfinancierocompose.data.CalendarEventEntity>>(emptyList()) }
@@ -143,7 +142,7 @@ fun MainScreen(
                             saldoTotal = saldoTotal,
                             cuentas = cuentasTotal,
                             inversiones = inversionesTotal,
-                            deudas = deudas,
+                            // deudas eliminado
                             ahorroMensual = 0.0,
                             gastosMensuales = 0.0,
                             ingresosMensuales = 0.0,

@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -69,7 +70,7 @@ fun CredentialsListScreen(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
                     text = { Text("Inversiones") },
-                    icon = { Icon(Icons.Default.TrendingUp, contentDescription = "Inversiones") }
+                    icon = { Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = "Inversiones") }
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -277,7 +278,7 @@ fun CredentialsListScreen(
                             Column(modifier = Modifier.padding(20.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        Icons.Default.TrendingUp,
+                                        Icons.AutoMirrored.Filled.TrendingUp,
                                         contentDescription = "Plataforma",
                                         tint = Color(0xFF388E3C),
                                         modifier = Modifier.size(28.dp)

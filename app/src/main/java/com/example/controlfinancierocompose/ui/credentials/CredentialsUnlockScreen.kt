@@ -44,7 +44,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,18 +54,20 @@ fun CredentialsUnlockScreen(onUnlock: () -> Unit) {
     var showError by remember { mutableStateOf(false) }
     var showBiometric by remember { mutableStateOf(false) }
 
-    val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+    val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
     val prefs = EncryptedSharedPreferences.create(
-        "secure_prefs",
-        masterKeyAlias,
         context,
+        "secure_prefs",
+        masterKey,
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
     val correctPin = prefs.getString("user_pin", "") ?: ""
 
     val biometricManager = BiometricManager.from(context)
-    val biometricStatus = biometricManager.canAuthenticate()
+    val biometricStatus = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
     val canAuthenticate = biometricStatus == BiometricManager.BIOMETRIC_SUCCESS
     var biometricErrorMsg = ""
     if (!canAuthenticate) {

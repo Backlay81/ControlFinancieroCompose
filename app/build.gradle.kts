@@ -44,6 +44,8 @@ android {
 }
 
 dependencies {
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.github.yuriy-budiyev:code-scanner:2.3.2")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     // Biometric y Fragment
     implementation("androidx.biometric:biometric:1.1.0")

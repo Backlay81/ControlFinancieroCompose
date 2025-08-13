@@ -20,7 +20,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.MoneyOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -67,7 +67,6 @@ fun DashboardScreen(
     saldoTotal: Double = 12500.0,
     cuentas: Double = 8000.0,
     inversiones: Double = 4000.0,
-    deudas: Double = 500.0,
     ahorroMensual: Double = 300.0,
     gastosMensuales: Double = 1200.0,
     ingresosMensuales: Double = 1500.0,
@@ -153,12 +152,8 @@ fun DashboardScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
             item {
-                SummaryCard("Inversiones", inversiones, Icons.Default.TrendingUp, Color(0xFF0288D1), amountsVisible.value)
+                SummaryCard("Inversiones", inversiones, Icons.AutoMirrored.Filled.TrendingUp, Color(0xFF0288D1), amountsVisible.value)
                 Spacer(modifier = Modifier.height(12.dp))
-            }
-            item {
-                SummaryCard("Deudas", deudas, Icons.Default.MoneyOff, Color(0xFFD32F2F), amountsVisible.value)
-                Spacer(modifier = Modifier.height(20.dp))
             }
             item {
                 Text("Indicadores clave", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color(0xFF1976D2))
@@ -173,7 +168,7 @@ fun DashboardScreen(
             item {
                 Text("Distribución de activos", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color(0xFF1976D2))
                 Spacer(modifier = Modifier.height(8.dp))
-                PieChartMock(cuentas, inversiones, deudas)
+                PieChartMock(cuentas, inversiones)
                 Spacer(modifier = Modifier.height(20.dp))
             }
             item {
@@ -245,13 +240,12 @@ fun IndicatorCard(titulo: String, cantidad: Double, color: Color) {
 }
 
 @Composable
-fun PieChartMock(cuentas: Double, inversiones: Double, deudas: Double) {
+fun PieChartMock(cuentas: Double, inversiones: Double) {
     // Aquí iría una gráfica real, pero mostramos una fila de barras de colores como mock
     val minWeight = 0.01f
-    val total = cuentas + inversiones + deudas
+    val total = cuentas + inversiones
     val cuentasWeight = if (total > 0) (cuentas / total).toFloat().coerceAtLeast(minWeight) else minWeight
     val inversionesWeight = if (total > 0) (inversiones / total).toFloat().coerceAtLeast(minWeight) else minWeight
-    val deudasWeight = if (total > 0) (deudas / total).toFloat().coerceAtLeast(minWeight) else minWeight
 
     Row(
         modifier = Modifier
@@ -268,16 +262,11 @@ fun PieChartMock(cuentas: Double, inversiones: Double, deudas: Double) {
             .weight(inversionesWeight)
             .fillMaxHeight()
             .background(Color(0xFF0288D1), RoundedCornerShape(16.dp)))
-        Box(modifier = Modifier
-            .weight(deudasWeight)
-            .fillMaxHeight()
-            .background(Color(0xFFD32F2F), RoundedCornerShape(16.dp)))
     }
     Spacer(modifier = Modifier.height(4.dp))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text("Cuentas", color = Color(0xFF388E3C), fontSize = 12.sp)
         Text("Inversiones", color = Color(0xFF0288D1), fontSize = 12.sp)
-        Text("Deudas", color = Color(0xFFD32F2F), fontSize = 12.sp)
     }
 }
 

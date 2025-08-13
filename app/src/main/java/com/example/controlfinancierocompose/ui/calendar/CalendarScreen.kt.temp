@@ -35,12 +35,12 @@ fun CalendarScreen() {
     val dayOfWeekOffset = firstDayOfMonth.dayOfWeek.value % 7 // 0=Sunday
     val days = (1..daysInMonth).toList()
 
-    var selectedDay by remember { mutableIntStateOf(today.dayOfMonth) }
+    var selectedDay by remember { mutableStateOf(today.dayOfMonth) }
     var showAddEventDialog by remember { mutableStateOf(false) }
     var showEditEventDialog by remember { mutableStateOf(false) }
     var eventName by remember { mutableStateOf("") }
     var eventDescription by remember { mutableStateOf("") }
-    var editEventIndex by remember { mutableIntStateOf(-1) }
+    var editEventIndex by remember { mutableStateOf(-1) }
     // Estado para confirmación de borrado
     var showDeleteEventDialog by remember { mutableStateOf(false) }
     var eventToDelete by remember { mutableStateOf<CalendarEventEntity?>(null) }
