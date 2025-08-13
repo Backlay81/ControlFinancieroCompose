@@ -16,11 +16,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.MoneyOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -55,8 +54,17 @@ import com.example.controlfinancierocompose.ui.credentials.Credential
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.serialization.Serializable
+import java.text.NumberFormat
+import java.util.Locale
 import androidx.compose.ui.graphics.Color as ComposeColor
 
+// Formateador para cantidades en formato español
+fun formatCantidadES(cantidad: Double): String {
+    val nf = NumberFormat.getNumberInstance(Locale("es", "ES"))
+    nf.minimumFractionDigits = 2
+    nf.maximumFractionDigits = 2
+    return nf.format(cantidad) + " €"
+}
 
 // Modelo de movimiento para el dashboard
 data class Movimiento(val descripcion: String, val cantidad: Double, val fecha: String)
@@ -207,7 +215,7 @@ fun SummaryCard(titulo: String, cantidad: Double, icon: androidx.compose.ui.grap
             Column(horizontalAlignment = Alignment.End) {
                 Text(titulo, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = color)
                 Text(
-                    if (amountsVisible) "%.2f €".format(cantidad) else "•••••• €",
+                    if (amountsVisible) formatCantidadES(cantidad) else "•••••• €",
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                     color = color
@@ -234,7 +242,7 @@ fun IndicatorCard(titulo: String, cantidad: Double, color: Color) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(titulo, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = color)
-            Text("%.2f €".format(cantidad), fontWeight = FontWeight.Bold, fontSize = 15.sp, color = color)
+            Text(formatCantidadES(cantidad), fontWeight = FontWeight.Bold, fontSize = 15.sp, color = color)
         }
     }
 }
@@ -291,7 +299,7 @@ fun MovimientosList(movimientos: List<Movimiento>) {
                         Text(it.fecha, fontSize = 12.sp, color = Color.Gray)
                     }
                     Text(
-                        (if (it.cantidad >= 0) "+" else "") + "%.2f €".format(it.cantidad),
+                        (if (it.cantidad >= 0) "+" else "") + formatCantidadES(it.cantidad),
                         fontWeight = FontWeight.Bold,
                         color = if (it.cantidad >= 0) Color(0xFF388E3C) else Color(0xFFD32F2F),
                         fontSize = 15.sp

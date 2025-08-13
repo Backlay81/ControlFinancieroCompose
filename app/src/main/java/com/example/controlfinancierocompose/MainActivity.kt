@@ -119,13 +119,6 @@ class MainActivity : FragmentActivity() {
             ControlFinancieroComposeTheme {
                 val context = this
                 var pinSet by remember { mutableStateOf(false) }
-                var showUnlock by remember { mutableStateOf(false) }
-                // Observar el estado global de desbloqueo
-                val unlocked = remember { androidx.compose.runtime.mutableStateOf(SessionManager.isUnlocked) }
-                // Observar cambios en SessionManager.isUnlocked
-                LaunchedEffect(SessionManager.isUnlocked) {
-                    unlocked.value = SessionManager.isUnlocked
-                }
                 LaunchedEffect(Unit) {
                     val masterKey = androidx.security.crypto.MasterKey.Builder(context)
                         .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
@@ -138,19 +131,16 @@ class MainActivity : FragmentActivity() {
                         androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                     )
                     pinSet = prefs.getString("user_pin", null)?.length == 8
-                    showUnlock = pinSet
                 }
                 val app = application as FinancialControlApplication
                 val calendarEventRepository = app.calendarEventRepository
                 if (!pinSet) {
                     com.example.controlfinancierocompose.ui.auth.PinSetupScreen(onPinSet = {
                         pinSet = true
-                        showUnlock = true
                     })
-                } else if (showUnlock && !unlocked.value) {
+                } else if (!SessionManager.isUnlocked) {
                     com.example.controlfinancierocompose.ui.auth.PinUnlockScreen(
                         onUnlock = {
-                            unlocked.value = true
                             SessionManager.isUnlocked = true
                         },
                         onMaxAttempts = { /* Aquí podrías mostrar la tarjeta de coordenadas para recuperación */ }
