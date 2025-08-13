@@ -1,5 +1,6 @@
 package com.example.controlfinancierocompose
 
+
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -21,8 +22,12 @@ import com.example.controlfinancierocompose.ui.theme.ControlFinancieroComposeThe
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
-
 class MainActivity : FragmentActivity() {
+    override fun onResume() {
+        super.onResume()
+        // Siempre forzar autenticación al volver a primer plano
+        SessionManager.isUnlocked = false
+    }
     
     private val accountsViewModel: AccountsViewModel by viewModels {
         val app = application as FinancialControlApplication
@@ -114,8 +119,13 @@ class MainActivity : FragmentActivity() {
             ControlFinancieroComposeTheme {
                 val context = this
                 var pinSet by remember { mutableStateOf(false) }
-                var unlocked by remember { mutableStateOf(false) }
                 var showUnlock by remember { mutableStateOf(false) }
+                // Observar el estado global de desbloqueo
+                val unlocked = remember { androidx.compose.runtime.mutableStateOf(SessionManager.isUnlocked) }
+                // Observar cambios en SessionManager.isUnlocked
+                LaunchedEffect(SessionManager.isUnlocked) {
+                    unlocked.value = SessionManager.isUnlocked
+                }
                 LaunchedEffect(Unit) {
                     val masterKey = androidx.security.crypto.MasterKey.Builder(context)
                         .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
@@ -137,9 +147,12 @@ class MainActivity : FragmentActivity() {
                         pinSet = true
                         showUnlock = true
                     })
-                } else if (showUnlock && !unlocked) {
+                } else if (showUnlock && !unlocked.value) {
                     com.example.controlfinancierocompose.ui.auth.PinUnlockScreen(
-                        onUnlock = { unlocked = true },
+                        onUnlock = {
+                            unlocked.value = true
+                            SessionManager.isUnlocked = true
+                        },
                         onMaxAttempts = { /* Aquí podrías mostrar la tarjeta de coordenadas para recuperación */ }
                     )
                 } else {
