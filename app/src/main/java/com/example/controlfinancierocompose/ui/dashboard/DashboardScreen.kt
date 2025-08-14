@@ -232,7 +232,15 @@ fun toAbbreviatedQrJson(exportData: ExportData): String {
         objMap["i"] = investmentsList
     }
     if (exportData.calendarEvents.isNotEmpty()) {
-        objMap["e"] = json.encodeToJsonElement(ListSerializer(CalendarEventEntity.serializer()), exportData.calendarEvents)
+        val eventsList = JsonArray(exportData.calendarEvents.map { ev ->
+            val evMap = mutableMapOf<String, JsonElement>()
+            if (ev.id != 0L) evMap["i"] = JsonPrimitive(ev.id)
+            evMap["n"] = JsonPrimitive(ev.name)
+            if (ev.description.isNotEmpty()) evMap["d"] = JsonPrimitive(ev.description)
+            evMap["f"] = JsonPrimitive(ev.date)
+            JsonObject(evMap)
+        })
+        objMap["e"] = eventsList
     }
     if (exportData.credentials.isNotEmpty()) {
         objMap["r"] = json.encodeToJsonElement(ListSerializer(Credential.serializer()), exportData.credentials)
@@ -336,7 +344,7 @@ fun DashboardScreen(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Enviar eventos (QR)") },
+                        text = { Text("Enviar calendario (QR)") },
                         onClick = {
                             qrMenuExpanded = false
                             onSendQRCalendar()
