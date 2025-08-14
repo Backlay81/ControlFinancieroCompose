@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -243,7 +245,17 @@ fun toAbbreviatedQrJson(exportData: ExportData): String {
         objMap["e"] = eventsList
     }
     if (exportData.credentials.isNotEmpty()) {
-        objMap["r"] = json.encodeToJsonElement(ListSerializer(Credential.serializer()), exportData.credentials)
+        val credsList = JsonArray(exportData.credentials.map { cred ->
+            val credMap = mutableMapOf<String, JsonElement>(
+                "p" to JsonPrimitive(cred.platformId),
+                "h" to JsonPrimitive(cred.holder)
+            )
+            if (cred.accountId != null) credMap["a"] = JsonPrimitive(cred.accountId)
+            if (!cred.username.isNullOrEmpty()) credMap["u"] = JsonPrimitive(cred.username)
+            if (!cred.password.isNullOrEmpty()) credMap["w"] = JsonPrimitive(cred.password)
+            JsonObject(credMap)
+        })
+        objMap["r"] = credsList
     }
     
     // Serializar el objeto final
@@ -328,34 +340,46 @@ fun DashboardScreen(
                     onDismissRequest = { qrMenuExpanded = false },
                     modifier = Modifier.background(Color.White)
                 ) {
+                    // Grupo: Enviar por QR
+                    Text(
+                        "Enviar por QR",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline),
+                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
+                    )
                     DropdownMenuItem(
-                        text = { Text("Enviar cuentas (QR)") },
+                        text = { Text("Cuentas") },
                         onClick = {
                             qrMenuExpanded = false
                             onSendQRBank()
                         }
                     )
-                   
                     DropdownMenuItem(
-                        text = { Text("Enviar inversiones (QR)") },
+                        text = { Text("Inversiones") },
                         onClick = {
                             qrMenuExpanded = false
                             onSendQRInvestment()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Enviar calendario (QR)") },
+                        text = { Text("Calendario") },
                         onClick = {
                             qrMenuExpanded = false
                             onSendQRCalendar()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Enviar credenciales (QR)") },
+                        text = { Text("Credenciales") },
                         onClick = {
                             qrMenuExpanded = false
                             onSendQRCredentials()
                         }
+                    )
+                    Divider()
+                    // Grupo: Archivo
+                    Text(
+                        "Archivo",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline),
+                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
                     )
                     DropdownMenuItem(
                         text = { Text("Exportar archivo") },
@@ -365,17 +389,19 @@ fun DashboardScreen(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Recibir datos (QR)") },
-                        onClick = {
-                            qrMenuExpanded = false
-                            onReceiveQR()
-                        }
-                    )
-                    DropdownMenuItem(
                         text = { Text("Importar archivo") },
                         onClick = {
                             qrMenuExpanded = false
                             onImportFile()
+                        }
+                    )
+                    Divider()
+                    // Grupo: Recibir QR
+                    DropdownMenuItem(
+                        text = { Text("Recibir datos (QR)") },
+                        onClick = {
+                            qrMenuExpanded = false
+                            onReceiveQR()
                         }
                     )
                 }
