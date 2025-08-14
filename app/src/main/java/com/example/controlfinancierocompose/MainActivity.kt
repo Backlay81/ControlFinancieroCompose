@@ -17,6 +17,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.controlfinancierocompose.ui.accounts.AccountsViewModel
 import com.example.controlfinancierocompose.ui.dashboard.ExportData
+import com.example.controlfinancierocompose.ui.dashboard.fromAbbreviatedQrJson
 import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModel
 import com.example.controlfinancierocompose.ui.theme.ControlFinancieroComposeTheme
 import kotlinx.coroutines.launch
@@ -94,16 +95,28 @@ class MainActivity : FragmentActivity() {
             val scanResult = result.data?.getStringExtra("SCAN_RESULT")
             if (scanResult != null) {
                 try {
-                    // Decodificar los datos JSON
-                    val exportData = Json.decodeFromString(ExportData.serializer(), scanResult)
-                    
-                    // Procesar los datos recibidos
-                    importDataFromQR(exportData)
-                    
-                    // Mostrar mensaje de éxito
-                    Toast.makeText(this, "Datos importados correctamente", Toast.LENGTH_LONG).show()
+                    // Intentar primero decodificar el formato estándar
+                    try {
+                        val exportData = Json.decodeFromString(ExportData.serializer(), scanResult)
+                        // Procesar los datos recibidos
+                        importDataFromQR(exportData)
+                        // Mostrar mensaje de éxito
+                        Toast.makeText(this, "Datos importados correctamente", Toast.LENGTH_LONG).show()
+                    } catch (e: Exception) {
+                        // Si falla, intentar con el formato abreviado
+                        try {
+                            val exportData = fromAbbreviatedQrJson(scanResult)
+                            // Procesar los datos recibidos
+                            importDataFromQR(exportData)
+                            // Mostrar mensaje de éxito
+                            Toast.makeText(this, "Datos abreviados importados correctamente", Toast.LENGTH_LONG).show()
+                        } catch (e2: Exception) {
+                            // Error al procesar los datos en ambos formatos
+                            Toast.makeText(this, "Error al procesar los datos: ${e2.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 } catch (e: Exception) {
-                    // Error al procesar los datos
+                    // Error general al procesar los datos
                     Toast.makeText(this, "Error al procesar los datos: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }

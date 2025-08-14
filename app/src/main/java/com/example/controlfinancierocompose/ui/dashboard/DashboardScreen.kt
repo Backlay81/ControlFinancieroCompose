@@ -54,9 +54,179 @@ import com.example.controlfinancierocompose.ui.credentials.Credential
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import java.text.NumberFormat
 import java.util.Locale
 import androidx.compose.ui.graphics.Color as ComposeColor
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
+
+
+
+
+// Mapeo: id→i, name→n, accounts→a, isActive→v, bankId→b, holder→h, balance→l, currency→c, type→t, notes→o
+
+// No usamos estas funciones, pero las dejamos como referencia del mapeo abreviado
+// (El código actual usa una construcción directa de JsonObject y JsonArray)
+/*
+fun Bank.toAbbreviatedMap(): Map<String, Any?> = mapOf(
+    "i" to id,
+    "n" to name,
+    "a" to accounts.map { it.toAbbreviatedMap() },
+    "v" to isActive
+)
+
+fun Account.toAbbreviatedMap(): Map<String, Any?> = mapOf(
+    "i" to id,
+    "b" to bankId,
+    "h" to holder,
+    "n" to name,
+    "l" to balance,
+    "c" to currency,
+    "t" to type,
+    "o" to notes,
+    "v" to isActive
+)
+*/
+
+// --- Funciones para deserializar desde formato abreviado ---
+
+/**
+ * Deserializa un JSON con formato abreviado a un objeto ExportData.
+ * Esta función convierte el JSON abreviado (claves cortas como "b", "c", etc.)
+ * de vuelta a un objeto ExportData completo.
+ */
+fun fromAbbreviatedQrJson(json: String): ExportData {
+    val parser = Json { ignoreUnknownKeys = true }
+    val jsonObj = parser.parseToJsonElement(json).jsonObject
+    
+    // Extraer bancos (clave "b")
+    val banks = if (jsonObj.containsKey("b")) {
+        jsonObj["b"]?.jsonArray?.map { bankElement ->
+            val bankObj = bankElement.jsonObject
+            Bank(
+                id = bankObj["i"]?.jsonPrimitive?.long ?: 0L,
+                name = bankObj["n"]?.jsonPrimitive?.content ?: "",
+                isActive = bankObj["v"]?.jsonPrimitive?.boolean ?: true,
+                accounts = bankObj["a"]?.jsonArray?.map { accountElement ->
+                    val accountObj = accountElement.jsonObject
+                    Account(
+                        id = accountObj["i"]?.jsonPrimitive?.long ?: 0L,
+                        bankId = accountObj["b"]?.jsonPrimitive?.long ?: 0L,
+                        holder = accountObj["h"]?.jsonPrimitive?.content ?: "",
+                        name = accountObj["n"]?.jsonPrimitive?.content ?: "",
+                        balance = accountObj["l"]?.jsonPrimitive?.double ?: 0.0,
+                        currency = accountObj["c"]?.jsonPrimitive?.content ?: "USD",
+                        type = accountObj["t"]?.jsonPrimitive?.contentOrNull,
+                        notes = accountObj["o"]?.jsonPrimitive?.contentOrNull,
+                        isActive = accountObj["v"]?.jsonPrimitive?.boolean ?: true
+                    )
+                } ?: emptyList()
+            )
+        } ?: emptyList()
+    } else {
+        emptyList()
+    }
+    
+    // Para el resto de tipos, usar la deserialización normal
+    val investmentPlatforms = if (jsonObj.containsKey("p")) {
+        parser.decodeFromJsonElement(ListSerializer(InvestmentPlatformEntity.serializer()), jsonObj["p"]!!)
+    } else {
+        emptyList()
+    }
+    
+    val investments = if (jsonObj.containsKey("i")) {
+        parser.decodeFromJsonElement(ListSerializer(com.example.controlfinancierocompose.data.InvestmentEntity.serializer()), jsonObj["i"]!!)
+    } else {
+        emptyList()
+    }
+    
+    val calendarEvents = if (jsonObj.containsKey("e")) {
+        parser.decodeFromJsonElement(ListSerializer(CalendarEventEntity.serializer()), jsonObj["e"]!!)
+    } else {
+        emptyList()
+    }
+    
+    val credentials = if (jsonObj.containsKey("r")) {
+        parser.decodeFromJsonElement(ListSerializer(Credential.serializer()), jsonObj["r"]!!)
+    } else {
+        emptyList()
+    }
+    
+    return ExportData(
+        banks = banks,
+        accounts = emptyList(), // No usamos accounts sueltas, las incluimos en banks
+        investmentPlatforms = investmentPlatforms,
+        investments = investments,
+        calendarEvents = calendarEvents,
+        credentials = credentials
+    )
+}
+
+
+/**
+ * Serializa ExportData a un JSON compacto y abreviado para QR.
+ * - Claves de primer nivel abreviadas
+ * - Omitir listas vacías
+ * - Salida minificada
+ */
+fun toAbbreviatedQrJson(exportData: ExportData): String {
+    val json = Json { encodeDefaults = false; prettyPrint = false }
+    
+    // Construir el objeto JSON principal
+    val objMap = mutableMapOf<String, JsonElement>()
+    
+    // Serialización abreviada para bancos y cuentas
+    if (exportData.banks.isNotEmpty()) {
+        val banksList = JsonArray(exportData.banks.map { bank ->
+            val bankMap = mutableMapOf<String, JsonElement>(
+                "i" to JsonPrimitive(bank.id),
+                "n" to JsonPrimitive(bank.name)
+            )
+            // Solo incluir 'v' si el banco NO está activo
+            if (!bank.isActive) bankMap["v"] = JsonPrimitive(bank.isActive)
+            // Solo incluir 'a' si hay cuentas
+            if (bank.accounts.isNotEmpty()) {
+                val accountsArray = JsonArray(bank.accounts.map { account ->
+                    val accMap = mutableMapOf<String, JsonElement>(
+                        "i" to JsonPrimitive(account.id),
+                        "b" to JsonPrimitive(account.bankId),
+                        "h" to JsonPrimitive(account.holder),
+                        "n" to JsonPrimitive(account.name),
+                        "l" to JsonPrimitive(account.balance)
+                    )
+                    if (account.currency != "USD") accMap["c"] = JsonPrimitive(account.currency)
+                    if (account.type != null) accMap["t"] = JsonPrimitive(account.type)
+                    if (account.notes != null) accMap["o"] = JsonPrimitive(account.notes)
+                    if (!account.isActive) accMap["v"] = JsonPrimitive(account.isActive)
+                    JsonObject(accMap)
+                })
+                bankMap["a"] = accountsArray
+            }
+            JsonObject(bankMap)
+        })
+        objMap["b"] = banksList
+    }
+    
+    // Serialización normal para el resto de tipos
+    if (exportData.investmentPlatforms.isNotEmpty()) {
+        objMap["p"] = json.encodeToJsonElement(ListSerializer(InvestmentPlatformEntity.serializer()), exportData.investmentPlatforms)
+    }
+    if (exportData.investments.isNotEmpty()) {
+        objMap["i"] = json.encodeToJsonElement(ListSerializer(com.example.controlfinancierocompose.data.InvestmentEntity.serializer()), exportData.investments)
+    }
+    if (exportData.calendarEvents.isNotEmpty()) {
+        objMap["e"] = json.encodeToJsonElement(ListSerializer(CalendarEventEntity.serializer()), exportData.calendarEvents)
+    }
+    if (exportData.credentials.isNotEmpty()) {
+        objMap["r"] = json.encodeToJsonElement(ListSerializer(Credential.serializer()), exportData.credentials)
+    }
+    
+    // Serializar el objeto final
+    return json.encodeToString(JsonObject(objMap))
+}
+
 
 // Formateador para cantidades en formato español
 fun formatCantidadES(cantidad: Double): String {
@@ -84,8 +254,13 @@ fun DashboardScreen(
         Movimiento("Transferencia ahorro", -300.0, "05/08/2025"),
         Movimiento("Pago alquiler", -600.0, "01/08/2025")
     ),
-    onSendQR: () -> Unit = {},
-    onReceiveQR: () -> Unit = {}
+    onSendQRBank: () -> Unit = {},
+    onSendQRInvestment: () -> Unit = {},
+    onSendQRCalendar: () -> Unit = {},
+    onSendQRCredentials: () -> Unit = {},
+    onExportFile: () -> Unit = {},
+    onReceiveQR: () -> Unit = {},
+    onImportFile: () -> Unit = {}
 ) {
     val amountsVisible = remember { mutableStateOf(false) }
     var qrMenuExpanded by remember { mutableStateOf(false) }
@@ -131,17 +306,53 @@ fun DashboardScreen(
                     modifier = Modifier.background(Color.White)
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Enviar datos") },
+                        text = { Text("Enviar cuentas (QR)") },
                         onClick = {
                             qrMenuExpanded = false
-                            onSendQR()
+                            onSendQRBank()
+                        }
+                    )
+                   
+                    DropdownMenuItem(
+                        text = { Text("Enviar inversiones (QR)") },
+                        onClick = {
+                            qrMenuExpanded = false
+                            onSendQRInvestment()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Recibir datos") },
+                        text = { Text("Enviar eventos (QR)") },
+                        onClick = {
+                            qrMenuExpanded = false
+                            onSendQRCalendar()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Enviar credenciales (QR)") },
+                        onClick = {
+                            qrMenuExpanded = false
+                            onSendQRCredentials()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Exportar archivo") },
+                        onClick = {
+                            qrMenuExpanded = false
+                            onExportFile()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Recibir datos (QR)") },
                         onClick = {
                             qrMenuExpanded = false
                             onReceiveQR()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Importar archivo") },
+                        onClick = {
+                            qrMenuExpanded = false
+                            onImportFile()
                         }
                     )
                 }
@@ -333,7 +544,9 @@ fun QRDialog(json: String, onDismiss: () -> Unit) {
             Text("Datos para compartir", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
             QRCodeImage(json, size = 240.dp)
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("${json.length} caracteres", color = ComposeColor.DarkGray, style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.height(8.dp))
             Text("Escanea este código en el otro dispositivo", color = ComposeColor.Gray)
             Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = onDismiss) { Text("Cerrar") }
