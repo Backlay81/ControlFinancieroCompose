@@ -209,12 +209,27 @@ fun toAbbreviatedQrJson(exportData: ExportData): String {
         objMap["b"] = banksList
     }
     
-    // Serialización normal para el resto de tipos
+    // Serialización normal para plataformas, eventos y credenciales
     if (exportData.investmentPlatforms.isNotEmpty()) {
         objMap["p"] = json.encodeToJsonElement(ListSerializer(InvestmentPlatformEntity.serializer()), exportData.investmentPlatforms)
     }
     if (exportData.investments.isNotEmpty()) {
-        objMap["i"] = json.encodeToJsonElement(ListSerializer(com.example.controlfinancierocompose.data.InvestmentEntity.serializer()), exportData.investments)
+        val investmentsList = JsonArray(exportData.investments.map { inv ->
+            val invMap = mutableMapOf<String, JsonElement>(
+                "i" to JsonPrimitive(inv.id),
+                "n" to JsonPrimitive(inv.name)
+            )
+            if (inv.platformId != 0L) invMap["p"] = JsonPrimitive(inv.platformId)
+            if (inv.amount != 0.0) invMap["a"] = JsonPrimitive(inv.amount)
+            if (inv.shares != 0.0) invMap["s"] = JsonPrimitive(inv.shares)
+            if (inv.price != 0.0) invMap["r"] = JsonPrimitive(inv.price)
+            if (inv.date.isNotEmpty()) invMap["d"] = JsonPrimitive(inv.date)
+            if (inv.type.isNotEmpty()) invMap["t"] = JsonPrimitive(inv.type)
+            if (inv.notes.isNotEmpty()) invMap["o"] = JsonPrimitive(inv.notes)
+            if (!inv.isActive) invMap["v"] = JsonPrimitive(inv.isActive)
+            JsonObject(invMap)
+        })
+        objMap["i"] = investmentsList
     }
     if (exportData.calendarEvents.isNotEmpty()) {
         objMap["e"] = json.encodeToJsonElement(ListSerializer(CalendarEventEntity.serializer()), exportData.calendarEvents)
