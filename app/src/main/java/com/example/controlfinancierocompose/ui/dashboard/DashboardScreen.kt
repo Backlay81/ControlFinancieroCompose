@@ -210,28 +210,26 @@ fun toAbbreviatedQrJson(exportData: ExportData): String {
     // Construir el objeto JSON principal
     val objMap = mutableMapOf<String, JsonElement>()
     
-    // Serialización abreviada para bancos y cuentas
+    // Bancos y cuentas
     if (exportData.banks.isNotEmpty()) {
         val banksList = JsonArray(exportData.banks.map { bank ->
             val bankMap = mutableMapOf<String, JsonElement>(
                 "i" to JsonPrimitive(bank.id),
                 "n" to JsonPrimitive(bank.name)
             )
-            // Solo incluir 'v' si el banco NO está activo
             if (!bank.isActive) bankMap["v"] = JsonPrimitive(bank.isActive)
-            // Solo incluir 'a' si hay cuentas
             if (bank.accounts.isNotEmpty()) {
                 val accountsArray = JsonArray(bank.accounts.map { account ->
                     val accMap = mutableMapOf<String, JsonElement>(
                         "i" to JsonPrimitive(account.id),
                         "b" to JsonPrimitive(account.bankId),
                         "h" to JsonPrimitive(account.holder),
-                        "n" to JsonPrimitive(account.name),
-                        "l" to JsonPrimitive(account.balance)
+                        "n" to JsonPrimitive(account.name)
                     )
+                    if (account.balance != 0.0) accMap["l"] = JsonPrimitive(account.balance)
                     if (account.currency != "USD") accMap["c"] = JsonPrimitive(account.currency)
-                    if (account.type != null) accMap["t"] = JsonPrimitive(account.type)
-                    if (account.notes != null) accMap["o"] = JsonPrimitive(account.notes)
+                    if (!account.type.isNullOrEmpty()) accMap["t"] = JsonPrimitive(account.type)
+                    if (!account.notes.isNullOrEmpty()) accMap["o"] = JsonPrimitive(account.notes)
                     if (!account.isActive) accMap["v"] = JsonPrimitive(account.isActive)
                     JsonObject(accMap)
                 })
@@ -241,11 +239,21 @@ fun toAbbreviatedQrJson(exportData: ExportData): String {
         })
         objMap["b"] = banksList
     }
-    
-    // Serialización normal para plataformas, eventos y credenciales
+
+    // Plataformas de inversión (abreviado y omitiendo campos vacíos)
     if (exportData.investmentPlatforms.isNotEmpty()) {
-        objMap["p"] = json.encodeToJsonElement(ListSerializer(InvestmentPlatformEntity.serializer()), exportData.investmentPlatforms)
+        val platformsList = JsonArray(exportData.investmentPlatforms.map { platform ->
+            val platformMap = mutableMapOf<String, JsonElement>(
+                "i" to JsonPrimitive(platform.id),
+                "n" to JsonPrimitive(platform.name)
+            )
+            if (!platform.isActive) platformMap["v"] = JsonPrimitive(platform.isActive)
+            JsonObject(platformMap)
+        })
+        objMap["p"] = platformsList
     }
+
+    // Inversiones (abreviado y omitiendo campos vacíos)
     if (exportData.investments.isNotEmpty()) {
         val investmentsList = JsonArray(exportData.investments.map { inv ->
             val invMap = mutableMapOf<String, JsonElement>(
@@ -256,9 +264,9 @@ fun toAbbreviatedQrJson(exportData: ExportData): String {
             if (inv.amount != 0.0) invMap["a"] = JsonPrimitive(inv.amount)
             if (inv.shares != 0.0) invMap["s"] = JsonPrimitive(inv.shares)
             if (inv.price != 0.0) invMap["r"] = JsonPrimitive(inv.price)
-            if (inv.date.isNotEmpty()) invMap["d"] = JsonPrimitive(inv.date)
-            if (inv.type.isNotEmpty()) invMap["t"] = JsonPrimitive(inv.type)
-            if (inv.notes.isNotEmpty()) invMap["o"] = JsonPrimitive(inv.notes)
+            if (!inv.date.isNullOrEmpty()) invMap["d"] = JsonPrimitive(inv.date)
+            if (!inv.type.isNullOrEmpty()) invMap["t"] = JsonPrimitive(inv.type)
+            if (!inv.notes.isNullOrEmpty()) invMap["o"] = JsonPrimitive(inv.notes)
             if (!inv.isActive) invMap["v"] = JsonPrimitive(inv.isActive)
             JsonObject(invMap)
         })
