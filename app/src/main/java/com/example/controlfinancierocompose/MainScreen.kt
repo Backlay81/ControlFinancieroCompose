@@ -1,5 +1,6 @@
 package com.example.controlfinancierocompose
 
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,15 +27,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.controlfinancierocompose.navigation.Screen
@@ -46,6 +54,7 @@ import com.example.controlfinancierocompose.ui.investments.InvestmentsScreen
 import com.example.controlfinancierocompose.ui.investments.InvestmentsViewModel
 import kotlinx.serialization.json.Json
 import com.example.controlfinancierocompose.data.CalendarEventRepository
+import kotlinx.serialization.json.jsonObject
 
 @Composable
 fun MainScreen(
@@ -59,10 +68,72 @@ fun MainScreen(
     val QR_CHAR_LIMIT = 1800
     val context = LocalContext.current
     var exportMessage by remember { mutableStateOf<String?>(null) }
+    // Usar un flag persistente para no perder el estado si la app se pausa
+    val sharedPreferences = context.getSharedPreferences("import_backup", 0)
     var pendingImportData by remember {
         mutableStateOf<com.example.controlfinancierocompose.ui.dashboard.ExportData?>(
             null
         )
+    }
+    // Declarar app, repository y calendarEventRepo al inicio para acceso global (solo una vez)
+    val app = context.applicationContext as com.example.controlfinancierocompose.FinancialControlApplication
+    val repository = app.repository
+    val calendarEventRepo = app.calendarEventRepository
+    // Al iniciar o volver a la app, si hay backup pendiente en prefs, cargarlo
+    LaunchedEffect(Unit) {
+        try {
+            val json = sharedPreferences.getString("pending_import_json", null)
+            if (json != null) {
+                Log.e("IMPORT_DEBUG", "JSON leído: " + json.take(200))
+                // Intentar primero abreviado, luego estándar, luego adaptar claves largas a cortas
+                val importData = try {
+                    com.example.controlfinancierocompose.ui.dashboard.fromAbbreviatedQrJson(json)
+                } catch (e: Exception) {
+                    Log.e("IMPORT_DEBUG", "Error abreviado: ${e.message}", e)
+                    try {
+                        Json.decodeFromString(
+                            com.example.controlfinancierocompose.ui.dashboard.ExportData.serializer(),
+                            json
+                        )
+                    } catch (e2: Exception) {
+                        Log.e("IMPORT_DEBUG", "Error estándar: ${e2.message}", e2)
+                        // --- Adaptar claves largas a cortas si es posible ---
+                        try {
+                            val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(json).jsonObject
+                            // Si detecta claves largas, mapear a abreviadas
+                            val keyMap = mapOf(
+                                "banks" to "b", "accounts" to "a", "investmentPlatforms" to "p", "investments" to "i", "calendarEvents" to "e", "credentials" to "r",
+                                "id" to "i", "name" to "n", "isActive" to "v", "bankId" to "b", "holder" to "h", "balance" to "l", "currency" to "c", "type" to "t", "notes" to "o",
+                                "platformId" to "p", "accountId" to "a", "username" to "u", "password" to "w", "description" to "d", "date" to "f"
+                            )
+                            fun mapKeysDeep(element: kotlinx.serialization.json.JsonElement): kotlinx.serialization.json.JsonElement {
+                                return when (element) {
+                                    is kotlinx.serialization.json.JsonObject -> kotlinx.serialization.json.buildJsonObject {
+                                        element.forEach { (k, v) ->
+                                            val newKey = keyMap[k] ?: k
+                                            put(newKey, mapKeysDeep(v))
+                                        }
+                                    }
+                                    is kotlinx.serialization.json.JsonArray -> kotlinx.serialization.json.JsonArray(element.map { mapKeysDeep(it) })
+                                    else -> element
+                                }
+                            }
+                            val abreviado = mapKeysDeep(jsonObj)
+                            com.example.controlfinancierocompose.ui.dashboard.fromAbbreviatedQrJson(abreviado.toString())
+                        } catch (e3: Exception) {
+                            Log.e("IMPORT_DEBUG", "Error adaptando claves: ${e3.message}", e3)
+                            null
+                        }
+                    }
+                }
+                if (importData != null) {
+                    pendingImportData = importData
+                }
+                sharedPreferences.edit().remove("pending_import_json").apply()
+            }
+        } catch (e: Exception) {
+            Log.e("IMPORT_DEBUG", "Error global: ${e.message}", e)
+        }
     }
     val importLauncher = rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent(),
@@ -72,74 +143,69 @@ fun MainScreen(
                     val inputStream = context.contentResolver.openInputStream(uri)
                     val json = inputStream?.bufferedReader()?.use { it.readText() }
                     if (json != null) {
-                        val importData = Json.decodeFromString(
-                            com.example.controlfinancierocompose.ui.dashboard.ExportData.serializer(),
-                            json
-                        )
-                        pendingImportData = importData
+                        // Guardar el JSON en SharedPreferences para que sobreviva si la app se pausa
+                        sharedPreferences.edit().putString("pending_import_json", json).apply()
+                        exportMessage = "Backup listo para importar. Si la app pide autenticación, la importación continuará al volver."
                     } else {
                         exportMessage = "No se pudo leer el archivo."
                     }
                 } catch (e: Exception) {
                     exportMessage = "Error al importar backup: ${e.message}"
                 }
+            } else {
+                exportMessage = "Importación cancelada o URI nulo"
             }
         }
     )
 
     // Restaurar datos importados cuando pendingImportData cambie
-    val app =
-        context.applicationContext as com.example.controlfinancierocompose.FinancialControlApplication
-    val repository = app.repository
-    val calendarEventRepo = app.calendarEventRepository
     androidx.compose.runtime.LaunchedEffect(pendingImportData) {
         val importData = pendingImportData
         if (importData != null) {
-            try {
-                // Borrar todo
-                repository.deleteAllInvestments()
-                repository.deleteAllPlatforms()
-                repository.deleteAllAccounts()
-                repository.deleteAllBanks()
-                repository.deleteAllCalendarEvents()
-                com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.saveAllCredentials(
-                    context,
-                    emptyList()
-                )
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                try {
+                    // Borrar todo
+                    repository.deleteAllInvestments()
+                    repository.deleteAllPlatforms()
+                    repository.deleteAllAccounts()
+                    repository.deleteAllBanks()
+                    repository.deleteAllCalendarEvents()
+                    com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.saveAllCredentials(
+                        context,
+                        emptyList()
+                    )
 
-                // Importar bancos y cuentas
-                importData.banks.forEach { bank ->
-                    repository.insertBank(bank)
-                    bank.accounts.forEach { account ->
-                        repository.insertAccount(account)
+                    for (bank in importData.banks) {
+                        repository.insertBank(bank)
+                        for (account in bank.accounts) {
+                            repository.insertAccount(account)
+                        }
                     }
-                }
-                // Importar plataformas de inversión
-                importData.investmentPlatforms.forEach { platform ->
-                    repository.insertPlatform(platform)
-                }
-                // Importar inversiones
-                importData.investments.forEach { investment ->
-                    repository.insertInvestment(investment)
-                }
-                // Importar eventos de calendario
-                importData.calendarEvents.forEach { event ->
-                    calendarEventRepo?.insertEvent(event)
-                }
-                // Importar credenciales
-                com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.saveAllCredentials(
-                    context,
-                    importData.credentials
-                )
+                    for (platform in importData.investmentPlatforms) {
+                        repository.insertPlatform(platform)
+                    }
+                    for (investment in importData.investments) {
+                        repository.insertInvestment(investment)
+                    }
+                    for (event in importData.calendarEvents) {
+                        calendarEventRepo?.insertEvent(event)
+                    }
+                    com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.saveAllCredentials(
+                        context,
+                        importData.credentials
+                    )
 
-                // Refrescar los ViewModels para que la UI muestre los datos correctos
-                accountsViewModel.refresh()
-                investmentsViewModel.refresh()
-                exportMessage = "Backup importado correctamente."
-            } catch (e: Exception) {
-                exportMessage = "Error al importar backup: ${e.message}"
+                    // Refrescar los ViewModels para que la UI muestre los datos correctos
+                    accountsViewModel.refresh()
+                    investmentsViewModel.refresh()
+                    exportMessage = "Backup importado correctamente."
+                } catch (e: Exception) {
+                    exportMessage = "Error al importar backup: ${e.message}"
+                }
+                pendingImportData = null
+                // Limpiar el flag persistente
+                sharedPreferences.edit().remove("pending_import_json").apply()
             }
-            pendingImportData = null
         }
     }
     var currentScreen by remember { mutableStateOf(Screen.DASHBOARD) } // Ahora mostramos el dashboard por defecto
@@ -213,16 +279,17 @@ fun MainScreen(
         ) {
             when (currentScreen) {
                 Screen.DASHBOARD -> {
-                    val banks by accountsViewModel.banks.collectAsState()
-                    val investments by investmentsViewModel.investments.collectAsState()
-                    val cuentas = banks.flatMap { it.accounts }
-                    val saldoTotal = cuentas.sumOf { it.balance } + investments.sumOf { it.amount }
-                    val cuentasTotal = cuentas.sumOf { it.balance }
-                    val inversionesTotal = investments.sumOf { it.amount }
-                    val movimientos = cuentas.map {
+                    val banks = accountsViewModel.banks.collectAsState().value
+                    val investments = investmentsViewModel.investments.collectAsState().value
+                    val cuentas = banks.flatMap { bank -> bank.accounts }
+                    val saldoTotal = cuentas.fold(0.0) { acc, cuenta -> acc + cuenta.balance } + 
+                                    investments.fold(0.0) { acc, inv -> acc + inv.amount }
+                    val cuentasTotal = cuentas.fold(0.0) { acc, cuenta -> acc + cuenta.balance }
+                    val inversionesTotal = investments.fold(0.0) { acc, inv -> acc + inv.amount }
+                    val movimientos = cuentas.map { cuenta ->
                         Movimiento(
-                            it.name,
-                            it.balance,
+                            cuenta.name,
+                            cuenta.balance,
                             "-"
                         )
                     } + investments.map { Movimiento(it.name, it.amount, it.date) }
@@ -240,6 +307,56 @@ fun MainScreen(
                     var showQR by remember { mutableStateOf(false) }
                     var qrJson by remember { mutableStateOf("") }
                     var exportMessage by remember { mutableStateOf<String?>(null) }
+                    // --- Exportación de backup: declaración aquí para acceso a banks/cuentas/investments ---
+                    var pendingExport by remember { mutableStateOf(false) }
+                    val exportLauncher = rememberLauncherForActivityResult(
+                        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
+                        onResult = { uri ->
+                            if (uri != null) {
+                                try {
+                                    val calendarEvents = try {
+                                        calendarEventRepository?.let { repo ->
+                                            kotlinx.coroutines.runBlocking { repo.getAllEventsList() }
+                                        } ?: emptyList()
+                                    } catch (_: Exception) {
+                                        emptyList()
+                                    }
+                                    val credentials = try {
+                                        com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.getAllCredentials(
+                                            context
+                                        )
+                                    } catch (_: Exception) {
+                                        emptyList()
+                                    }
+                                    val exportData =
+                                        com.example.controlfinancierocompose.ui.dashboard.ExportData(
+                                            banks = banks,
+                                            accounts = cuentas,
+                                            investmentPlatforms = investmentsViewModel.platforms.value,
+                                            investments = investments,
+                                            calendarEvents = calendarEvents,
+                                            credentials = credentials
+                                        )
+                                    val json = com.example.controlfinancierocompose.ui.dashboard.toAbbreviatedQrJson(exportData)
+                                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                                        outputStream.write(json.toByteArray())
+                                    }
+                                    exportMessage = "Backup exportado correctamente."
+                                } catch (e: Exception) {
+                                    exportMessage = "Error al exportar backup: ${e.message}"
+                                }
+                            } else {
+                                exportMessage = "Exportación cancelada."
+                            }
+                            pendingExport = false
+                        }
+                    )
+                    LaunchedEffect(pendingExport) {
+                        if (pendingExport) {
+                            val fileName = "controlfinanciero-backup-${System.currentTimeMillis()}.json"
+                            exportLauncher.launch(fileName)
+                        }
+                    }
                     // Cargar eventos y credenciales solo cuando se pulse exportar
                     Box(modifier = Modifier.fillMaxSize()) {
                         DashboardScreen(
@@ -333,53 +450,63 @@ fun MainScreen(
                                     showQR = true
                                 }
                             },
-                            onExportFile = {
-                                val calendarEvents = try {
-                                    calendarEventRepository?.let { repo ->
-                                        kotlinx.coroutines.runBlocking { repo.getAllEventsList() }
-                                    } ?: emptyList()
-                                } catch (_: Exception) {
-                                    emptyList()
-                                }
-                                val credentials = try {
-                                    com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.getAllCredentials(
-                                        context
-                                    )
-                                } catch (_: Exception) {
-                                    emptyList()
-                                }
-                                val exportData =
-                                    com.example.controlfinancierocompose.ui.dashboard.ExportData(
-                                        banks = banks,
-                                        accounts = cuentas,
-                                        investmentPlatforms = investmentsViewModel.platforms.value,
-                                        investments = investments,
-                                        calendarEvents = calendarEvents,
-                                        credentials = credentials
-                                    )
-                                try {
-                                    val json = Json.encodeToString(
-                                        com.example.controlfinancierocompose.ui.dashboard.ExportData.serializer(),
-                                        exportData
-                                    )
-                                    val fileName =
-                                        "controlfinanciero-backup-${System.currentTimeMillis()}.json"
-                                    val downloads =
-                                        android.os.Environment.getExternalStoragePublicDirectory(
-                                            android.os.Environment.DIRECTORY_DOWNLOADS
-                                        )
-                                    val file = java.io.File(downloads, fileName)
-                                    file.writeText(json)
-                                    exportMessage = "Backup exportado en: ${file.absolutePath}"
-                                } catch (e: Exception) {
-                                    exportMessage = "Error al exportar backup: ${e.message}"
-                                }
-                            },
+                            // ...existing code...
+                            onExportFile = { pendingExport = true },
                             onReceiveQR = onReceiveQR,
                             onImportFile = {
                                 importLauncher.launch("application/json")
                             }
                         )
+                        // --- Exportación de backup: declaración fuera del callback ---
+                        var pendingExport by remember { mutableStateOf(false) }
+                        val exportLauncher = rememberLauncherForActivityResult(
+                            contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
+                            onResult = { uri ->
+                                if (uri != null) {
+                                    try {
+                                        val calendarEvents = try {
+                                            calendarEventRepository?.let { repo ->
+                                                kotlinx.coroutines.runBlocking { repo.getAllEventsList() }
+                                            } ?: emptyList()
+                                        } catch (_: Exception) {
+                                            emptyList()
+                                        }
+                                        val credentials = try {
+                                            com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.getAllCredentials(
+                                                context
+                                            )
+                                        } catch (_: Exception) {
+                                            emptyList()
+                                        }
+                                        val exportData =
+                                            com.example.controlfinancierocompose.ui.dashboard.ExportData(
+                                                banks = banks,
+                                                accounts = cuentas,
+                                                investmentPlatforms = investmentsViewModel.platforms.value,
+                                                investments = investments,
+                                                calendarEvents = calendarEvents,
+                                                credentials = credentials
+                                            )
+                                        val json = com.example.controlfinancierocompose.ui.dashboard.toAbbreviatedQrJson(exportData)
+                                        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                                            outputStream.write(json.toByteArray())
+                                        }
+                                        exportMessage = "Backup exportado correctamente."
+                                    } catch (e: Exception) {
+                                        exportMessage = "Error al exportar backup: ${e.message}"
+                                    }
+                                } else {
+                                    exportMessage = "Exportación cancelada."
+                                }
+                                pendingExport = false
+                            }
+                        )
+                        LaunchedEffect(pendingExport) {
+                            if (pendingExport) {
+                                val fileName = "controlfinanciero-backup-${System.currentTimeMillis()}.json"
+                                exportLauncher.launch(fileName)
+                            }
+                        }
                         if (showQR) {
                             com.example.controlfinancierocompose.ui.dashboard.QRDialog(qrJson) {
                                 showQR = false
@@ -438,8 +565,8 @@ fun MainScreen(
                             onUnlock = { unlocked = true }
                         )
                     } else {
-                        val banks by accountsViewModel.banks.collectAsState()
-                        val investmentPlatforms by investmentsViewModel.platforms.collectAsState()
+                        val banks = accountsViewModel.banks.collectAsState().value
+                        val investmentPlatforms = investmentsViewModel.platforms.collectAsState().value
                         com.example.controlfinancierocompose.ui.credentials.CredentialsListScreen(
                             banks = banks,
                             investmentPlatforms = investmentPlatforms,
