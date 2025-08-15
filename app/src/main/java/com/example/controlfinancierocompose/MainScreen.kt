@@ -81,24 +81,28 @@ fun MainScreen(
     val calendarEventRepo = app.calendarEventRepository
     // Al iniciar o volver a la app, si hay backup pendiente en prefs, cargarlo
     LaunchedEffect(Unit) {
+        Log.e("IMPORT_DEBUG", "[FASE 1] Lanzando efecto de importación inicial")
         try {
             val json = sharedPreferences.getString("pending_import_json", null)
+            Log.e("IMPORT_DEBUG", "[FASE 2] JSON en prefs: ${json?.take(200)}")
             if (json != null) {
-                Log.e("IMPORT_DEBUG", "JSON leído: " + json.take(200))
                 // Intentar primero abreviado, luego estándar, luego adaptar claves largas a cortas
                 val importData = try {
+                    Log.e("IMPORT_DEBUG", "[FASE 3] Intentando parseo abreviado")
                     com.example.controlfinancierocompose.ui.dashboard.fromAbbreviatedQrJson(json)
                 } catch (e: Exception) {
-                    Log.e("IMPORT_DEBUG", "Error abreviado: ${e.message}", e)
+                    Log.e("IMPORT_DEBUG", "[FASE 3] Error abreviado: ${e.message}", e)
                     try {
+                        Log.e("IMPORT_DEBUG", "[FASE 4] Intentando parseo estándar")
                         Json.decodeFromString(
                             com.example.controlfinancierocompose.ui.dashboard.ExportData.serializer(),
                             json
                         )
                     } catch (e2: Exception) {
-                        Log.e("IMPORT_DEBUG", "Error estándar: ${e2.message}", e2)
+                        Log.e("IMPORT_DEBUG", "[FASE 4] Error estándar: ${e2.message}", e2)
                         // --- Adaptar claves largas a cortas si es posible ---
                         try {
+                            Log.e("IMPORT_DEBUG", "[FASE 5] Intentando adaptar claves largas a cortas")
                             val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(json).jsonObject
                             // Si detecta claves largas, mapear a abreviadas
                             val keyMap = mapOf(
@@ -121,49 +125,57 @@ fun MainScreen(
                             val abreviado = mapKeysDeep(jsonObj)
                             com.example.controlfinancierocompose.ui.dashboard.fromAbbreviatedQrJson(abreviado.toString())
                         } catch (e3: Exception) {
-                            Log.e("IMPORT_DEBUG", "Error adaptando claves: ${e3.message}", e3)
+                            Log.e("IMPORT_DEBUG", "[FASE 5] Error adaptando claves: ${e3.message}", e3)
                             null
                         }
                     }
                 }
+                Log.e("IMPORT_DEBUG", "[FASE 6] Resultado importData: ${importData != null}")
                 if (importData != null) {
                     pendingImportData = importData
                 }
                 sharedPreferences.edit().remove("pending_import_json").apply()
             }
         } catch (e: Exception) {
-            Log.e("IMPORT_DEBUG", "Error global: ${e.message}", e)
+            Log.e("IMPORT_DEBUG", "[FASE 0] Error global: ${e.message}", e)
         }
     }
     val importLauncher = rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent(),
         onResult = { uri ->
+            Log.e("IMPORT_DEBUG", "[FASE A] onResult importLauncher: uri=$uri")
             if (uri != null) {
                 try {
                     val inputStream = context.contentResolver.openInputStream(uri)
                     val json = inputStream?.bufferedReader()?.use { it.readText() }
+                    Log.e("IMPORT_DEBUG", "[FASE B] Leído JSON del archivo: ${json?.take(200)}")
                     if (json != null) {
                         // Guardar el JSON en SharedPreferences para que sobreviva si la app se pausa
                         sharedPreferences.edit().putString("pending_import_json", json).apply()
                         exportMessage = "Backup listo para importar. Si la app pide autenticación, la importación continuará al volver."
                     } else {
                         exportMessage = "No se pudo leer el archivo."
+                        Log.e("IMPORT_DEBUG", "[FASE B] No se pudo leer el archivo")
                     }
                 } catch (e: Exception) {
                     exportMessage = "Error al importar backup: ${e.message}"
+                    Log.e("IMPORT_DEBUG", "[FASE B] Error al leer archivo: ${e.message}", e)
                 }
             } else {
                 exportMessage = "Importación cancelada o URI nulo"
+                Log.e("IMPORT_DEBUG", "[FASE A] Importación cancelada o URI nulo")
             }
         }
     )
 
     // Restaurar datos importados cuando pendingImportData cambie
     androidx.compose.runtime.LaunchedEffect(pendingImportData) {
+        Log.e("IMPORT_DEBUG", "[FASE X] LaunchedEffect pendingImportData: ${pendingImportData != null}")
         val importData = pendingImportData
         if (importData != null) {
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
                 try {
+                    Log.e("IMPORT_DEBUG", "[FASE Y] Borrando datos antiguos")
                     // Borrar todo
                     repository.deleteAllInvestments()
                     repository.deleteAllPlatforms()
@@ -175,32 +187,40 @@ fun MainScreen(
                         emptyList()
                     )
 
+                    Log.e("IMPORT_DEBUG", "[FASE Z] Insertando bancos y cuentas")
                     for (bank in importData.banks) {
                         repository.insertBank(bank)
                         for (account in bank.accounts) {
                             repository.insertAccount(account)
                         }
                     }
+                    Log.e("IMPORT_DEBUG", "[FASE Z2] Insertando plataformas")
                     for (platform in importData.investmentPlatforms) {
                         repository.insertPlatform(platform)
                     }
+                    Log.e("IMPORT_DEBUG", "[FASE Z3] Insertando inversiones")
                     for (investment in importData.investments) {
                         repository.insertInvestment(investment)
                     }
+                    Log.e("IMPORT_DEBUG", "[FASE Z4] Insertando eventos de calendario")
                     for (event in importData.calendarEvents) {
                         calendarEventRepo?.insertEvent(event)
                     }
+                    Log.e("IMPORT_DEBUG", "[FASE Z5] Guardando credenciales")
                     com.example.controlfinancierocompose.ui.credentials.CredentialsStorage.saveAllCredentials(
                         context,
                         importData.credentials
                     )
 
                     // Refrescar los ViewModels para que la UI muestre los datos correctos
+                    Log.e("IMPORT_DEBUG", "[FASE Z6] Refrescando ViewModels")
                     accountsViewModel.refresh()
                     investmentsViewModel.refresh()
                     exportMessage = "Backup importado correctamente."
+                    Log.e("IMPORT_DEBUG", "[FASE Z7] Importación completada OK")
                 } catch (e: Exception) {
                     exportMessage = "Error al importar backup: ${e.message}"
+                    Log.e("IMPORT_DEBUG", "[FASE Z7] Error al importar backup: ${e.message}", e)
                 }
                 pendingImportData = null
                 // Limpiar el flag persistente

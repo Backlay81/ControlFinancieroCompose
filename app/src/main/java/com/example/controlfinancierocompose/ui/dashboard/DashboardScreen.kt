@@ -138,20 +138,51 @@ fun fromAbbreviatedQrJson(json: String): ExportData {
         emptyList()
     }
     
-    val investments = if (jsonObj.containsKey("i")) {
-        parser.decodeFromJsonElement(ListSerializer(com.example.controlfinancierocompose.data.InvestmentEntity.serializer()), jsonObj["i"]!!)
-    } else {
-        emptyList()
-    }
+        val investments = if (jsonObj.containsKey("i")) {
+            jsonObj["i"]?.jsonArray?.map { invElement ->
+                val invObj = invElement.jsonObject
+                com.example.controlfinancierocompose.data.InvestmentEntity(
+                    id = invObj["i"]?.jsonPrimitive?.long ?: 0L,
+                    platformId = invObj["p"]?.jsonPrimitive?.long ?: 0L,
+                    name = invObj["n"]?.jsonPrimitive?.content ?: "",
+                    amount = invObj["a"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    shares = invObj["s"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    price = invObj["r"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    type = invObj["t"]?.jsonPrimitive?.contentOrNull ?: "",
+                    notes = invObj["o"]?.jsonPrimitive?.contentOrNull ?: "",
+                    date = invObj["d"]?.jsonPrimitive?.contentOrNull ?: "",
+                    isActive = invObj["v"]?.jsonPrimitive?.booleanOrNull ?: true
+                )
+            } ?: emptyList()
+        } else {
+            emptyList()
+        }
     
     val calendarEvents = if (jsonObj.containsKey("e")) {
-        parser.decodeFromJsonElement(ListSerializer(CalendarEventEntity.serializer()), jsonObj["e"]!!)
+        jsonObj["e"]?.jsonArray?.map { evElement ->
+            val evObj = evElement.jsonObject
+            CalendarEventEntity(
+                id = evObj["i"]?.jsonPrimitive?.long ?: 0L,
+                name = evObj["n"]?.jsonPrimitive?.content ?: "",
+                description = evObj["d"]?.jsonPrimitive?.contentOrNull ?: "",
+                date = evObj["f"]?.jsonPrimitive?.contentOrNull ?: ""
+            )
+        } ?: emptyList()
     } else {
         emptyList()
     }
     
     val credentials = if (jsonObj.containsKey("r")) {
-        parser.decodeFromJsonElement(ListSerializer(Credential.serializer()), jsonObj["r"]!!)
+        jsonObj["r"]?.jsonArray?.map { credElement ->
+            val credObj = credElement.jsonObject
+            com.example.controlfinancierocompose.ui.credentials.Credential(
+                platformId = credObj["p"]?.jsonPrimitive?.long ?: 0L,
+                accountId = credObj["a"]?.jsonPrimitive?.longOrNull,
+                holder = credObj["h"]?.jsonPrimitive?.content ?: "",
+                username = credObj["u"]?.jsonPrimitive?.contentOrNull,
+                password = credObj["w"]?.jsonPrimitive?.contentOrNull
+            )
+        } ?: emptyList()
     } else {
         emptyList()
     }
