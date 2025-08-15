@@ -240,7 +240,7 @@ fun toAbbreviatedQrJson(exportData: ExportData): String {
         objMap["b"] = banksList
     }
 
-    // Plataformas de inversión (abreviado y omitiendo campos vacíos)
+    // Plataformas de inversión anidadas con inversiones
     if (exportData.investmentPlatforms.isNotEmpty()) {
         val platformsList = JsonArray(exportData.investmentPlatforms.map { platform ->
             val platformMap = mutableMapOf<String, JsonElement>(
@@ -248,29 +248,28 @@ fun toAbbreviatedQrJson(exportData: ExportData): String {
                 "n" to JsonPrimitive(platform.name)
             )
             if (!platform.isActive) platformMap["v"] = JsonPrimitive(platform.isActive)
+            // Anidar inversiones asociadas a esta plataforma
+            val investmentsForPlatform = exportData.investments.filter { it.platformId == platform.id }
+            if (investmentsForPlatform.isNotEmpty()) {
+                val investmentsArray = JsonArray(investmentsForPlatform.map { inv ->
+                    val invMap = mutableMapOf<String, JsonElement>(
+                        "i" to JsonPrimitive(inv.id),
+                        "n" to JsonPrimitive(inv.name)
+                    )
+                    if (inv.amount != 0.0) invMap["a"] = JsonPrimitive(inv.amount)
+                    if (inv.shares != 0.0) invMap["s"] = JsonPrimitive(inv.shares)
+                    if (inv.price != 0.0) invMap["r"] = JsonPrimitive(inv.price)
+                    if (!inv.date.isNullOrEmpty()) invMap["d"] = JsonPrimitive(inv.date)
+                    if (!inv.type.isNullOrEmpty()) invMap["t"] = JsonPrimitive(inv.type)
+                    if (!inv.notes.isNullOrEmpty()) invMap["o"] = JsonPrimitive(inv.notes)
+                    if (!inv.isActive) invMap["v"] = JsonPrimitive(inv.isActive)
+                    JsonObject(invMap)
+                })
+                platformMap["a"] = investmentsArray
+            }
             JsonObject(platformMap)
         })
         objMap["p"] = platformsList
-    }
-
-    // Inversiones (abreviado y omitiendo campos vacíos)
-    if (exportData.investments.isNotEmpty()) {
-        val investmentsList = JsonArray(exportData.investments.map { inv ->
-            val invMap = mutableMapOf<String, JsonElement>(
-                "i" to JsonPrimitive(inv.id),
-                "n" to JsonPrimitive(inv.name)
-            )
-            if (inv.platformId != 0L) invMap["p"] = JsonPrimitive(inv.platformId)
-            if (inv.amount != 0.0) invMap["a"] = JsonPrimitive(inv.amount)
-            if (inv.shares != 0.0) invMap["s"] = JsonPrimitive(inv.shares)
-            if (inv.price != 0.0) invMap["r"] = JsonPrimitive(inv.price)
-            if (!inv.date.isNullOrEmpty()) invMap["d"] = JsonPrimitive(inv.date)
-            if (!inv.type.isNullOrEmpty()) invMap["t"] = JsonPrimitive(inv.type)
-            if (!inv.notes.isNullOrEmpty()) invMap["o"] = JsonPrimitive(inv.notes)
-            if (!inv.isActive) invMap["v"] = JsonPrimitive(inv.isActive)
-            JsonObject(invMap)
-        })
-        objMap["i"] = investmentsList
     }
     if (exportData.calendarEvents.isNotEmpty()) {
         val eventsList = JsonArray(exportData.calendarEvents.map { ev ->
