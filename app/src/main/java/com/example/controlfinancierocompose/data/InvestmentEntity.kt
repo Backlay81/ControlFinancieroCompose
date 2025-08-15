@@ -6,7 +6,18 @@ import kotlinx.serialization.Serializable
 import com.example.controlfinancierocompose.data.model.InvestmentType
 
 @Serializable
-@Entity(tableName = "investments")
+@Entity(
+    tableName = "investments",
+    foreignKeys = [
+        androidx.room.ForeignKey(
+            entity = InvestmentPlatformEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["platformId"],
+            onDelete = androidx.room.ForeignKey.CASCADE
+        )
+    ],
+    indices = [androidx.room.Index(value = ["platformId"])]
+)
 data class InvestmentEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val platformId: Long,

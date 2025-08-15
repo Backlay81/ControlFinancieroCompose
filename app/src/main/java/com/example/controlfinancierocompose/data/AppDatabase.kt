@@ -13,7 +13,7 @@ import androidx.room.RoomDatabase
         InvestmentEntity::class,
         CalendarEventEntity::class
     ],
-    version = 2,
+    version = 4, // Subido para forzar migración
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,6 +35,12 @@ abstract class AppDatabase : RoomDatabase() {
                     "financial_control_database"
                 )
                 .fallbackToDestructiveMigration()
+                .addCallback(object : RoomDatabase.Callback() {
+                    override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        db.execSQL("PRAGMA foreign_keys=ON")
+                    }
+                })
                 .build()
                 INSTANCE = instance
                 instance

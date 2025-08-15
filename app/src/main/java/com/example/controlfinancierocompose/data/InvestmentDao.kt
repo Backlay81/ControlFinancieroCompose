@@ -7,10 +7,10 @@ interface InvestmentDao {
     @Query("DELETE FROM investments")
     suspend fun deleteAllInvestments()
     @Query("SELECT * FROM investments WHERE platformId = :platformId")
-    suspend fun getInvestmentsForPlatform(platformId: Long): List<InvestmentEntity>
+    fun getInvestmentsForPlatform(platformId: Long): kotlinx.coroutines.flow.Flow<List<InvestmentEntity>>
 
     @Query("SELECT * FROM investments")
-    suspend fun getAllInvestments(): List<InvestmentEntity>
+    fun getAllInvestments(): kotlinx.coroutines.flow.Flow<List<InvestmentEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInvestment(investment: InvestmentEntity): Long

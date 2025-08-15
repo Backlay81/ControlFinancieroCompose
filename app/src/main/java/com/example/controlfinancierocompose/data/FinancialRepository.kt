@@ -7,12 +7,18 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+
 class FinancialRepository(
     private val bankDao: BankDao,
     private val accountDao: AccountDao,
     private val platformDao: PlatformDao,
     private val investmentDao: InvestmentDao
 ) {
+    // Plataformas de inversión y todas las inversiones como Flow
+    val allPlatforms: kotlinx.coroutines.flow.Flow<List<InvestmentPlatformEntity>> =
+        platformDao.getAllPlatforms()
+    val allInvestments: kotlinx.coroutines.flow.Flow<List<InvestmentEntity>> =
+        investmentDao.getAllInvestments()
 
     suspend fun deleteAllBanks() {
         bankDao.deleteAllBanks()
@@ -34,6 +40,7 @@ class FinancialRepository(
         // Si tienes un calendarEventDao, llama aquí
         // calendarEventDao.deleteAllEvents()
     }
+
     // Bank operations
     // Combinamos los flujos de bancos y cuentas
     val allBanks: Flow<List<Bank>> = kotlinx.coroutines.flow.combine(
@@ -48,36 +55,36 @@ class FinancialRepository(
             bankEntity.toBank(bankAccounts)
         }
     }
-    
+
     suspend fun getBankWithAccounts(bankId: Long): Bank? {
         val bank = bankDao.getBankById(bankId) ?: return null
         val bankAccounts = accountDao.getAccountsByBankIdSync(bankId)
         return bank.toBank(bankAccounts)
     }
-    
+
     suspend fun insertBank(bank: Bank): Long {
         return bankDao.insertBank(bank.toBankEntity())
     }
-    
+
     suspend fun updateBank(bank: Bank) {
         bankDao.updateBank(bank.toBankEntity())
     }
-    
+
     suspend fun deleteBank(bank: Bank) {
         bankDao.deleteBank(bank.toBankEntity())
     }
-    
+
     suspend fun deleteBankById(bankId: Long) {
         bankDao.deleteBankById(bankId)
     }
-    
+
     // Account operations
     val allAccounts: Flow<List<Account>> = accountDao.getAllAccounts().map { accountEntities ->
         accountEntities.map { accountEntity ->
             accountEntity.toAccount()
         }
     }
-    
+
     fun getAccountsByBankId(bankId: Long): Flow<List<Account>> {
         return accountDao.getAccountsByBankId(bankId).map { accountEntities ->
             accountEntities.map { accountEntity ->
@@ -85,89 +92,69 @@ class FinancialRepository(
             }
         }
     }
-    
+
     suspend fun getAccountById(accountId: Long): Account? {
         return accountDao.getAccountById(accountId)?.toAccount()
     }
-    
+
     suspend fun insertAccount(account: Account): Long {
         return accountDao.insertAccount(account.toAccountEntity())
     }
-    
+
     suspend fun updateAccount(account: Account) {
         accountDao.updateAccount(account.toAccountEntity())
     }
-    
+
     suspend fun deleteAccount(account: Account) {
         accountDao.deleteAccount(account.toAccountEntity())
     }
-    
+
     suspend fun deleteAccountById(accountId: Long) {
         accountDao.deleteAccountById(accountId)
     }
-    
+
     suspend fun getTotalBalanceByCurrency(currency: String): Double {
         return accountDao.getTotalBalanceByCurrency(currency) ?: 0.0
     }
-    
+
     // Operaciones de plataformas de inversión
     suspend fun getAllPlatforms(): List<InvestmentPlatformEntity> {
-        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            platformDao.getAllPlatforms()
-        }
+        return platformDao.getAllPlatforms().first()
     }
-    
+
     suspend fun insertPlatform(platform: InvestmentPlatformEntity): Long {
-        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            platformDao.insertPlatform(platform)
-            platform.id ?: -1
-        }
+        return platformDao.insertPlatform(platform)
     }
-    
+
     suspend fun updatePlatform(platform: InvestmentPlatformEntity) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            platformDao.updatePlatform(platform)
-        }
+        platformDao.updatePlatform(platform)
     }
-    
+
     suspend fun deletePlatform(platform: InvestmentPlatformEntity) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            platformDao.deletePlatform(platform)
-        }
+        platformDao.deletePlatform(platform)
     }
-    
+
     // Operaciones de inversiones
     suspend fun getInvestmentsForPlatform(platformId: Long): List<InvestmentEntity> {
-        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            investmentDao.getInvestmentsForPlatform(platformId)
-        }
+        return investmentDao.getInvestmentsForPlatform(platformId).first()
     }
 
     suspend fun getAllInvestments(): List<InvestmentEntity> {
-        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            investmentDao.getAllInvestments()
-        }
+        return investmentDao.getAllInvestments().first()
     }
-    
+
     suspend fun insertInvestment(investment: InvestmentEntity): Long {
-        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            val id = investmentDao.insertInvestment(investment)
-            id
-        }
+        return investmentDao.insertInvestment(investment)
     }
-    
+
     suspend fun updateInvestment(investment: InvestmentEntity) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            investmentDao.updateInvestment(investment)
-        }
+        investmentDao.updateInvestment(investment)
     }
-    
+
     suspend fun deleteInvestment(investment: InvestmentEntity) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            investmentDao.deleteInvestment(investment)
-        }
+        investmentDao.deleteInvestment(investment)
     }
-    
+
     // Función para agregar datos de prueba (útil para depuración)
     suspend fun addSampleData() {
         // La función queda vacía para no añadir datos de ejemplo
@@ -176,3 +163,4 @@ class FinancialRepository(
         }
     }
 }
+

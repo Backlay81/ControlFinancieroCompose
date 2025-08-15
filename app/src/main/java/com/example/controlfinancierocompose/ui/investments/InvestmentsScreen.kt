@@ -108,7 +108,7 @@ fun InvestmentsScreen(
     val investments by viewModel.investments.collectAsState(initial = emptyList())
     val totalInvested = investments.filter { it.isActive }.sumOf { it.amount }
     val platformCount = platforms.size
-    val investmentCount = investments.size
+    val investmentCount = investments.count { it.isActive }
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("es", "ES"))
     var amountsVisible = remember { mutableStateOf(false) }
     // Estados para el diálogo de añadir plataforma
@@ -171,7 +171,7 @@ fun InvestmentsScreen(
                 confirmButton = {
                     Button(onClick = {
                         if (newPlatformName.value.isNotBlank()) {
-                            viewModel.addPlatform(newPlatformName.value)
+                            viewModel.addPlatform(InvestmentPlatformEntity(name = newPlatformName.value))
                             newPlatformName.value = ""
                             showAddDialog.value = false
                         }
@@ -377,7 +377,6 @@ fun InvestmentsScreen(
                             },
                             onAddInvestment = { platformId ->
     addInvestmentPlatformId.value = platformId
-    viewModel.selectPlatform(platformId)
     addInvestmentName.value = ""
     addInvestmentAmount.value = ""
     addInvestmentType.value = ""
@@ -630,12 +629,9 @@ fun InvestmentsScreen(
                                         val notes = addInvestmentNotes.value
                                         val date = addInvestmentDate.value
                                         if (name.isNotBlank()) {
-                                            // Get the max investment ID and increment by 1 for the new ID
-                                            val investments = viewModel.investments.value
-                                            val newId = (investments.maxOfOrNull { it.id } ?: 0) + 1
                                             viewModel.addInvestment(
                                                 InvestmentEntity(
-                                                    id = newId,
+                                                    id = 0L, // Room autogenera el ID
                                                     name = name,
                                                     amount = amount,
                                                     shares = shares,
@@ -671,6 +667,7 @@ fun InvestmentsScreen(
                         text = { Text("¿Seguro que quieres eliminar esta inversión?") },
                         confirmButton = {
                             Button(onClick = {
+                                android.util.Log.i("INVESTMENTS_DEBUG", "UI va a borrar inversión: id=${investment.id}, nombre=${investment.name}")
                                 viewModel.deleteInvestment(investment)
                                 showDeleteInvestmentDialog.value = false
                             }) {
@@ -845,6 +842,7 @@ fun PlatformCardRoom(
                                 }
                                 IconButton(
                                     onClick = {
+                                        android.util.Log.d("INVESTMENTS_DEBUG", "Click en botón eliminar inversión: id=${investment.id}, nombre=${investment.name}, monto=${investment.amount}")
                                         onDeleteInvestment(investment.id)
                                     },
                                     modifier = Modifier.size(28.dp)

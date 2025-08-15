@@ -7,14 +7,14 @@ interface PlatformDao {
     @Query("DELETE FROM investment_platforms")
     suspend fun deleteAllPlatforms()
     @Query("SELECT * FROM investment_platforms")
-    fun getAllPlatforms(): List<InvestmentPlatformEntity>
+    fun getAllPlatforms(): kotlinx.coroutines.flow.Flow<List<InvestmentPlatformEntity>>
 
     @Insert
-    fun insertPlatform(platform: InvestmentPlatformEntity)
+    suspend fun insertPlatform(platform: InvestmentPlatformEntity): Long
 
     @Update
-    fun updatePlatform(platform: InvestmentPlatformEntity)
+    suspend fun updatePlatform(platform: InvestmentPlatformEntity)
 
     @Delete
-    fun deletePlatform(platform: InvestmentPlatformEntity)
+    suspend fun deletePlatform(platform: InvestmentPlatformEntity)
 }
